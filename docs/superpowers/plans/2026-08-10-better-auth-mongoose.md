@@ -93,17 +93,30 @@ export interface MongooseAdapterOptions {
 export function buildSchemaDefinition(fields: Record<string, DBFieldAttribute>): SchemaDefinition;
 
 // schema/merge-schema.ts
-export function mergeSchema(requiredFields: Record<string, DBFieldAttribute>, consumerSchema?: Schema): Schema;
+export function mergeSchema(
+  requiredFields: Record<string, DBFieldAttribute>,
+  consumerSchema?: Schema,
+): Schema;
 
 // schema/register-models.ts
-export function registerModels(connection: Connection, dbSchema: BetterAuthDBSchema, options: MongooseAdapterOptions): Map<string, Model<any>>;
+export function registerModels(
+  connection: Connection,
+  dbSchema: BetterAuthDBSchema,
+  options: MongooseAdapterOptions,
+): Map<string, Model<any>>;
 
 // id-mapping.ts
 export function generateObjectIdString(): string;
 export function toObjectId(id: string): Types.ObjectId;
 export function toIdString(id: Types.ObjectId | string): string;
-export function prepareDocForWrite(model: Model<any>, data: Record<string, unknown>): Record<string, unknown>;
-export function prepareDocForRead(model: Model<any>, doc: Record<string, unknown> | null): Record<string, unknown> | null;
+export function prepareDocForWrite(
+  model: Model<any>,
+  data: Record<string, unknown>,
+): Record<string, unknown>;
+export function prepareDocForRead(
+  model: Model<any>,
+  doc: Record<string, unknown> | null,
+): Record<string, unknown> | null;
 
 // operations/*.ts — each returns a function matching the exact CustomAdapter method signature
 export function makeCreate(models: Map<string, Model<any>>): CustomAdapter["create"];
@@ -114,19 +127,30 @@ export function makeUpdate(models: Map<string, Model<any>>): CustomAdapter["upda
 export function makeUpdateMany(models: Map<string, Model<any>>): CustomAdapter["updateMany"];
 export function makeDelete(models: Map<string, Model<any>>): CustomAdapter["delete"];
 export function makeDeleteMany(models: Map<string, Model<any>>): CustomAdapter["deleteMany"];
-export function makeConsumeOne(models: Map<string, Model<any>>): NonNullable<CustomAdapter["consumeOne"]>;
+export function makeConsumeOne(
+  models: Map<string, Model<any>>,
+): NonNullable<CustomAdapter["consumeOne"]>;
 
 // join.ts
 export function applyJoin<T>(query: Query<T, any>, join: JoinConfig | undefined): Query<T, any>;
 
 // transaction.ts
-export function createTransactionConfig(connection: Connection, models: Map<string, Model<any>>, enabled: boolean): AdapterFactoryConfig["transaction"];
+export function createTransactionConfig(
+  connection: Connection,
+  models: Map<string, Model<any>>,
+  enabled: boolean,
+): AdapterFactoryConfig["transaction"];
 
 // create-schema.ts
-export function makeCreateSchema(options: MongooseAdapterOptions): NonNullable<CustomAdapter["createSchema"]>;
+export function makeCreateSchema(
+  options: MongooseAdapterOptions,
+): NonNullable<CustomAdapter["createSchema"]>;
 
 // adapter.ts
-export function mongooseAdapter(connection: Connection, options?: MongooseAdapterOptions): AdapterFactory<BetterAuthOptions>;
+export function mongooseAdapter(
+  connection: Connection,
+  options?: MongooseAdapterOptions,
+): AdapterFactory<BetterAuthOptions>;
 ```
 
 ---
@@ -134,6 +158,7 @@ export function mongooseAdapter(connection: Connection, options?: MongooseAdapte
 ## Task 1: Root workspace tooling
 
 **Files:**
+
 - Create: `package.json` (root, `"private": true`)
 - Create: `pnpm-workspace.yaml`
 - Create: `turbo.json`
@@ -221,6 +246,7 @@ packages:
 - [ ] **Step 5: Write `.gitignore`, `.nvmrc`, `.editorconfig`, `.npmrc`**
 
 `.gitignore`:
+
 ```
 node_modules/
 dist/
@@ -232,11 +258,13 @@ coverage/
 ```
 
 `.nvmrc`:
+
 ```
 20
 ```
 
 `.editorconfig`:
+
 ```ini
 root = true
 
@@ -250,6 +278,7 @@ insert_final_newline = true
 ```
 
 `.npmrc`:
+
 ```
 auto-install-peers=true
 strict-peer-dependencies=false
@@ -272,6 +301,7 @@ git commit -m "chore: scaffold pnpm/turborepo workspace"
 ## Task 2: Lint, format, and git hooks
 
 **Files:**
+
 - Create: `eslint.config.js` (flat config, root)
 - Create: `.prettierrc.json`, `.prettierignore`
 - Create: `.husky/pre-commit`
@@ -307,6 +337,7 @@ Run: `pnpm add -Dw @eslint/js typescript-eslint`
 - [ ] **Step 3: Write `.prettierrc.json` and `.prettierignore`**
 
 `.prettierrc.json`:
+
 ```json
 {
   "semi": true,
@@ -317,6 +348,7 @@ Run: `pnpm add -Dw @eslint/js typescript-eslint`
 ```
 
 `.prettierignore`:
+
 ```
 dist/
 coverage/
@@ -339,6 +371,7 @@ pnpm-lock.yaml
 Run: `pnpm exec husky init`
 
 Write `.husky/pre-commit`:
+
 ```bash
 pnpm exec lint-staged
 ```
@@ -360,6 +393,7 @@ git commit -m "chore: add eslint, prettier, and husky pre-commit hook"
 ## Task 3: Changesets init and package skeletons
 
 **Files:**
+
 - Create: `.changeset/config.json`
 - Create: `packages/better-auth-mongoose/{package.json,tsup.config.ts,tsconfig.json,vitest.config.ts}`
 - Create: `packages/better-auth-mongoose/src/index.ts` (stub)
@@ -373,6 +407,7 @@ git commit -m "chore: add eslint, prettier, and husky pre-commit hook"
 Run: `pnpm exec changeset init`
 
 Edit generated `.changeset/config.json` to use independent versioning (default) and set:
+
 ```json
 {
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
@@ -441,6 +476,7 @@ Edit generated `.changeset/config.json` to use independent versioning (default) 
 - [ ] **Step 3: Scaffold `tsup.config.ts`, `tsconfig.json`, `vitest.config.ts`**
 
 `tsup.config.ts`:
+
 ```ts
 import { defineConfig } from "tsup";
 
@@ -455,6 +491,7 @@ export default defineConfig({
 ```
 
 `tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -467,6 +504,7 @@ export default defineConfig({
 ```
 
 `vitest.config.ts`:
+
 ```ts
 import { defineConfig } from "vitest/config";
 
@@ -504,6 +542,7 @@ git commit -m "chore: scaffold better-auth-mongoose and better-auth-mongoose-ten
 ## Task 4: CI workflows (lint, typecheck, test matrix, CodeQL, Dependabot)
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/codeql.yml`
 - Create: `.github/dependabot.yml`
@@ -622,6 +661,7 @@ git commit -m "ci: add lint/typecheck/test matrix, CodeQL, and dependabot"
 ## Task 5: Changesets release workflow
 
 **Files:**
+
 - Create: `.github/workflows/release.yml`
 
 **Interfaces:** None. Produces: on merge to `main`, opens/updates a "Version Packages" PR; merging that PR publishes to npm using an `NPM_TOKEN` secret the user adds later (documented in root README, Task 24).
@@ -684,6 +724,7 @@ git commit -m "ci: add changesets release workflow"
 ## Task 6: Community health files
 
 **Files:**
+
 - Create: `LICENSE`
 - Create: `CONTRIBUTING.md`
 - Create: `CODE_OF_CONDUCT.md`
@@ -728,6 +769,7 @@ SOFTWARE.
 - [ ] **Step 5: Write issue templates and PR template**
 
 `.github/ISSUE_TEMPLATE/config.yml`:
+
 ```yaml
 blank_issues_enabled: false
 contact_links:
@@ -754,13 +796,27 @@ git commit -m "docs: add community health files (license, contributing, CoC, sec
 
 ---
 
+## Implementation Note (added during execution, before Task 7)
+
+Before writing any adapter code, I read the real, currently-shipping `@better-auth/mongo-adapter@1.6.26` source (a transitive devDependency, pulled in via `@better-auth/test-utils`) and the exact `@better-auth/core` type definitions for `CustomAdapter`, `AdapterFactoryConfig`, `Where`, and `JoinConfig`. Three things confirmed or corrected from the plan as originally written:
+
+1. **ID conversion belongs in `customIdGenerator`/`customTransformInput`/`customTransformOutput` (all real, documented `AdapterFactoryConfig` fields), not scattered across every operation file.** The official adapter sets `customIdGenerator: () => new ObjectId().toString()` unconditionally, then in `customTransformInput` coerces any field where `field === "_id"` or `fieldAttributes.references?.field === "id"` from string to `ObjectId` — wrapped in try/catch, falling back to the original string if coercion fails (this only matters if a consumer overrides `advanced.database.generateId` with something that doesn't produce valid ObjectId hex). `customTransformOutput` does the inverse. This confirms the plan's original instinct (Task 10) but relocates the mechanism: **`id-mapping.ts` now exports `customIdGenerator`, `makeCustomTransformInput`, and `makeCustomTransformOutput` for use in `adapter.ts`'s `config:` block — not `prepareDocForWrite`/`prepareDocForRead` called manually from each operation.** This means Tasks 11–13's operation files do **not** need to touch ID conversion at all — the factory applies these hooks automatically before/after calling our raw `CustomAdapter` methods. Use `mongoose.Types.ObjectId`, not the `mongodb` package's `ObjectId` — Mongoose re-exports a compatible class, so this still satisfies the "no direct `mongodb` dependency" constraint.
+2. **`transaction` lives on `AdapterFactoryConfig` (the `config:` object), confirmed directly from the type definition** (`AdapterFactoryConfig extends Omit<DBAdapterFactoryConfig, "transaction"> { transaction?: (false | (<R>(cb: (trx: DBTransactionAdapter) => Promise<R>) => Promise<R>)) }`) — Task 16 no longer needs the `as any` cast the original plan hedged with. The official adapter's real wiring recursively calls `createAdapterFactory({ config: { ...adapterOptions.config, transaction: false }, adapter: createCustomAdapter(session) })(lazyOptions)` inside the transaction function, using a `lazyOptions`/`lazyAdapter` closure set when the outer returned function is first invoked by Better Auth core. Task 15/16 now follow this exact pattern instead of the plan's original (incorrect) idea of handing the callback a bare `CustomAdapter`-shaped object built from the raw operation factories.
+3. **`JoinConfig`'s real shape is `{ [joinedModelName]: { on: { from: string; to: string }, limit?: number, relation?: "one-to-one" | "one-to-many" | "many-to-many" } }`** — not `{ path, select }` as the plan guessed. Since every Better Auth relation's `references.field` is `"id"` (verified against `getAuthTables`), `on.to` is always `"id"`/`"_id"`, so `applyJoin` translates directly to `query.populate({ path: on.from })` — the local field that already carries a Mongoose `ref` (set by `build-schema.ts` for any field with a `references` attribute). Task 14 implements this directly rather than doing the "read the type first" step at that point — it's already done here.
+
+These are corrections grounded in the actual installed package, not guesses — applying them now, before writing `id-mapping.ts`, `join.ts`, or `transaction.ts`, avoids building on the plan's original (less certain) assumptions and then having to redo it.
+
+---
+
 ## Task 7: Schema builder (`build-schema.ts`)
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/schema/build-schema.ts`
 - Test: `packages/better-auth-mongoose/test/build-schema.test.ts`
 
 **Interfaces:**
+
 - Consumes: Better Auth's `DBFieldAttribute` shape, verified via Context7 from `getAuthTables` source — fields observed: `type: "string" | "number" | "boolean" | "date"`, `required?: boolean`, `unique?: boolean`, `fieldName: string`, `references?: { model: string; field: string; onDelete?: string }`, `defaultValue?: unknown | (() => unknown)`, `sortable?: boolean`, `index?: boolean`, `input?: boolean`, `returned?: boolean`, `bigint?: boolean`.
 - Produces: `buildSchemaDefinition(fields: Record<string, DBFieldAttribute>): mongoose.SchemaDefinition` — used by Task 9's `register-models.ts`.
 
@@ -845,9 +901,7 @@ const TYPE_MAP = {
   date: Date,
 } as const;
 
-export function buildSchemaDefinition(
-  fields: Record<string, DBFieldAttribute>,
-): SchemaDefinition {
+export function buildSchemaDefinition(fields: Record<string, DBFieldAttribute>): SchemaDefinition {
   const definition: SchemaDefinition = {};
 
   for (const [key, attr] of Object.entries(fields)) {
@@ -897,10 +951,12 @@ git commit -m "feat(adapter): map Better Auth field attributes to Mongoose schem
 ## Task 8: Schema merge (`merge-schema.ts`) — the differentiator's foundation
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/schema/merge-schema.ts`
 - Test: `packages/better-auth-mongoose/test/merge-schema.test.ts`
 
 **Interfaces:**
+
 - Consumes: `buildSchemaDefinition` from Task 7.
 - Produces: `mergeSchema(requiredFields: Record<string, DBFieldAttribute>, consumerSchema?: Schema): Schema` — used by Task 9's `register-models.ts`. Backfills any Better-Auth-required field missing from the consumer's schema; never drops a consumer field; never lets a consumer field silently override a required field's `required`/`unique` constraint (logs nothing here — just merges structurally, per G4).
 
@@ -998,11 +1054,13 @@ git commit -m "feat(adapter): merge consumer Mongoose schemas with Better Auth's
 ## Task 9: Default schemas and model registration (`register-models.ts`)
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/schema/default-schemas.ts`
 - Create: `packages/better-auth-mongoose/src/schema/register-models.ts`
 - Test: `packages/better-auth-mongoose/test/register-models.test.ts`
 
 **Interfaces:**
+
 - Consumes: `mergeSchema` (Task 8), `MongooseAdapterOptions` (Task 1's types.ts — write it now if not yet present), Better Auth's `BetterAuthDBSchema` (`{ [modelKey]: { modelName: string; fields: Record<string, DBFieldAttribute> } }`, verified via Context7's `getAuthTables` source).
 - Produces: `registerModels(connection: Connection, dbSchema: BetterAuthDBSchema, options: MongooseAdapterOptions): Map<string, Model<any>>` keyed by each entry's **resolved** `modelName` (not the schema object's key) — this is the same string Better Auth's adapter factory passes as `model` into every `CustomAdapter` method, so Task 11-13's operations can look models up directly by that value.
 
@@ -1166,10 +1224,12 @@ git commit -m "feat(adapter): register real Mongoose models per Better Auth tabl
 ## Task 10: ID mapping (`id-mapping.ts`) — the correctness-critical piece
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/id-mapping.ts`
 - Test: `packages/better-auth-mongoose/test/id-mapping.test.ts`
 
 **Interfaces:**
+
 - Produces: `generateObjectIdString()`, `toObjectId(id: string): Types.ObjectId`, `toIdString(id: Types.ObjectId | string): string`, `prepareDocForWrite(model: Model<any>, data: Record<string, unknown>): Record<string, unknown>`, `prepareDocForRead(model: Model<any>, doc: Record<string, unknown> | null): Record<string, unknown> | null`. All of Tasks 11-13's operations depend on these two `prepare*` functions.
 
 **Why this task matters (read before implementing):** Better Auth's default ID generator produces a 32-character base62 string (verified via Context7 against `better-auth`'s `packages/core/src/utils/id.ts`) — **not** a valid `ObjectId` hex string. Every existing blog post's raw-client workaround either stores that string as a literal Mongo `_id` (fine, but then a consumer's own `{ type: ObjectId, ref: 'user' }` field can never `.populate()` against it, since the types don't match) or doesn't address it at all. The fix: this adapter supplies its own `customIdGenerator` (a documented `AdapterFactoryConfig` field — verified via Context7 against the `defaultValue()` id-field source, which shows `customIdGenerator` is checked with lower priority than a user's own `advanced.database.generateId` and higher priority than the base62 default) that emits real 24-hex-char strings, i.e. valid `ObjectId.toHexString()` output. `prepareDocForWrite` then converts any path in the model's schema whose Mongoose type is `ObjectId` (including `_id` itself) from that hex string to a real `Types.ObjectId` before the document is saved; `prepareDocForRead` converts back to string on the way out. This is what makes `Post.author: { type: ObjectId, ref: 'user' }` actually `.populate()` correctly — proven end-to-end in Task 18.
@@ -1338,12 +1398,14 @@ git commit -m "feat(adapter): ObjectId-compatible id generation and read/write c
 ## Task 11: Create, read, and count operations
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/operations/create.ts`
 - Create: `packages/better-auth-mongoose/src/operations/read.ts`
 - Create: `packages/better-auth-mongoose/test/setup.ts`
 - Test: `packages/better-auth-mongoose/test/crud.test.ts` (create/read/count portion — update/delete added by Tasks 12-13 to the same file)
 
 **Interfaces:**
+
 - Consumes: `prepareDocForWrite`/`prepareDocForRead` (Task 10), `Map<string, Model<any>>` from `registerModels` (Task 9), `applyJoin` (defined in Task 14 — **for this task, write `read.ts` calling `applyJoin` as an already-known import; Task 14 will fill in `join.ts`'s implementation, but stub it now as a same-signature passthrough so this task's tests can run**: `export function applyJoin<T>(query: T, _join?: unknown): T { return query; }` in a temporary `src/join.ts`, to be replaced (not re-created) in Task 14.
 - Produces: `makeCreate`, `makeFindOne`, `makeFindMany`, `makeCount` — assembled into the adapter in Task 16.
 
@@ -1446,14 +1508,19 @@ describe("create + findOne + findMany + count", () => {
     const findOne = makeFindOne(models);
     const found = await findOne({
       model: "user",
-      where: [{ field: "email", value: "nobody@example.com", operator: "eq", connector: "AND" }] as any,
+      where: [
+        { field: "email", value: "nobody@example.com", operator: "eq", connector: "AND" },
+      ] as any,
     });
     expect(found).toBeNull();
   });
 
   it("finds many documents with limit", async () => {
     const create = makeCreate(models);
-    await create({ model: "user", data: { _id: generateObjectIdString(), email: "b@example.com", name: "Bob" } as any });
+    await create({
+      model: "user",
+      data: { _id: generateObjectIdString(), email: "b@example.com", name: "Bob" } as any,
+    });
 
     const findMany = makeFindMany(models);
     const results = await findMany({ model: "user", where: undefined, limit: 10 });
@@ -1553,7 +1620,10 @@ export function makeFindOne(models: Map<string, Model<any>>): CustomAdapter["fin
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
 
     const filter = whereToMongoFilter(where);
-    const projection = select?.reduce((acc, field) => ({ ...acc, [field]: 1 }), {} as Record<string, 1>);
+    const projection = select?.reduce(
+      (acc, field) => ({ ...acc, [field]: 1 }),
+      {} as Record<string, 1>,
+    );
 
     let query = mongooseModel.findOne(filter, projection);
     query = applyJoin(query, join);
@@ -1569,7 +1639,10 @@ export function makeFindMany(models: Map<string, Model<any>>): CustomAdapter["fi
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
 
     const filter = whereToMongoFilter(where);
-    const projection = select?.reduce((acc, field) => ({ ...acc, [field]: 1 }), {} as Record<string, 1>);
+    const projection = select?.reduce(
+      (acc, field) => ({ ...acc, [field]: 1 }),
+      {} as Record<string, 1>,
+    );
 
     let query = mongooseModel.find(filter, projection).limit(limit);
     if (offset) query = query.skip(offset);
@@ -1609,10 +1682,12 @@ git commit -m "feat(adapter): implement create, findOne, findMany, and count ope
 ## Task 12: Update operations
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/operations/update.ts`
 - Modify: `packages/better-auth-mongoose/test/crud.test.ts` (append update tests)
 
 **Interfaces:**
+
 - Consumes: `whereToMongoFilter` (exported from Task 11's `read.ts`), `prepareDocForWrite`/`prepareDocForRead` (Task 10).
 - Produces: `makeUpdate`, `makeUpdateMany`.
 
@@ -1639,7 +1714,9 @@ describe("update + updateMany", () => {
     const update = makeUpdate(models);
     const result = await update({
       model: "user",
-      where: [{ field: "email", value: "ghost@example.com", operator: "eq", connector: "AND" }] as any,
+      where: [
+        { field: "email", value: "ghost@example.com", operator: "eq", connector: "AND" },
+      ] as any,
       update: { name: "Nobody" } as any,
     });
     expect(result).toBeNull();
@@ -1719,10 +1796,12 @@ git commit -m "feat(adapter): implement update and updateMany operations"
 ## Task 13: Delete, deleteMany, and atomic consumeOne
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/operations/delete.ts`
 - Modify: `packages/better-auth-mongoose/test/crud.test.ts` (append delete/consumeOne tests)
 
 **Interfaces:**
+
 - Consumes: `whereToMongoFilter` (Task 11).
 - Produces: `makeDelete`, `makeDeleteMany`, `makeConsumeOne` — the latter is the atomic single-use-token consumer called out in the spec as a concrete reliability win (native `findOneAndDelete`, not a `findMany`+`deleteMany` fallback).
 
@@ -1736,13 +1815,26 @@ describe("delete + deleteMany + consumeOne", () => {
   it("deletes a single matching document", async () => {
     const create = makeCreate(models);
     const id = generateObjectIdString();
-    await create({ model: "user", data: { _id: id, email: "todelete@example.com", name: "Gone" } as any });
+    await create({
+      model: "user",
+      data: { _id: id, email: "todelete@example.com", name: "Gone" } as any,
+    });
 
     const del = makeDelete(models);
-    await del({ model: "user", where: [{ field: "email", value: "todelete@example.com", operator: "eq", connector: "AND" }] as any });
+    await del({
+      model: "user",
+      where: [
+        { field: "email", value: "todelete@example.com", operator: "eq", connector: "AND" },
+      ] as any,
+    });
 
     const findOne = makeFindOne(models);
-    const found = await findOne({ model: "user", where: [{ field: "email", value: "todelete@example.com", operator: "eq", connector: "AND" }] as any });
+    const found = await findOne({
+      model: "user",
+      where: [
+        { field: "email", value: "todelete@example.com", operator: "eq", connector: "AND" },
+      ] as any,
+    });
     expect(found).toBeNull();
   });
 
@@ -1755,10 +1847,15 @@ describe("delete + deleteMany + consumeOne", () => {
   it("atomically consumes (finds and deletes) a matching document exactly once", async () => {
     const create = makeCreate(models);
     const id = generateObjectIdString();
-    await create({ model: "user", data: { _id: id, email: "token@example.com", name: "Token" } as any });
+    await create({
+      model: "user",
+      data: { _id: id, email: "token@example.com", name: "Token" } as any,
+    });
 
     const consumeOne = makeConsumeOne(models);
-    const where = [{ field: "email", value: "token@example.com", operator: "eq", connector: "AND" }] as any;
+    const where = [
+      { field: "email", value: "token@example.com", operator: "eq", connector: "AND" },
+    ] as any;
 
     const [first, second] = await Promise.all([
       consumeOne({ model: "user", where }),
@@ -1805,7 +1902,9 @@ export function makeDeleteMany(models: Map<string, Model<any>>): CustomAdapter["
   };
 }
 
-export function makeConsumeOne(models: Map<string, Model<any>>): NonNullable<CustomAdapter["consumeOne"]> {
+export function makeConsumeOne(
+  models: Map<string, Model<any>>,
+): NonNullable<CustomAdapter["consumeOne"]> {
   return async ({ model, where }) => {
     const mongooseModel = models.get(model);
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
@@ -1834,10 +1933,12 @@ git commit -m "feat(adapter): implement delete, deleteMany, and atomic consumeOn
 ## Task 14: Joins — replace the `join.ts` stub with real `.populate()` translation
 
 **Files:**
+
 - Modify: `packages/better-auth-mongoose/src/join.ts` (replace stub body, keep exported name/signature)
 - Test: `packages/better-auth-mongoose/test/join.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Query` from `mongoose`, Better Auth's `JoinConfig` type (shape not fully exposed by Context7 — **first step below is to read the real type**).
 - Produces: `applyJoin<T>(query: Query<T, any>, join: JoinConfig | undefined): Query<T, any>` — same signature Task 11's `read.ts` already imports, so no changes needed there.
 
@@ -1869,15 +1970,26 @@ afterAll(async () => {
 
 describe("applyJoin", () => {
   it("resolves a referenced document via populate when a join config is given", async () => {
-    const Author = connection.model("JoinTestAuthor", new Schema({ _id: Schema.Types.ObjectId, name: String }));
+    const Author = connection.model(
+      "JoinTestAuthor",
+      new Schema({ _id: Schema.Types.ObjectId, name: String }),
+    );
     const Post = connection.model(
       "JoinTestPost",
-      new Schema({ _id: Schema.Types.ObjectId, title: String, author: { type: Schema.Types.ObjectId, ref: "JoinTestAuthor" } }),
+      new Schema({
+        _id: Schema.Types.ObjectId,
+        title: String,
+        author: { type: Schema.Types.ObjectId, ref: "JoinTestAuthor" },
+      }),
     );
 
     const authorId = generateObjectIdString();
     await Author.create({ _id: toObjectId(authorId), name: "Ada" });
-    await Post.create({ _id: toObjectId(generateObjectIdString()), title: "Hello", author: toObjectId(authorId) });
+    await Post.create({
+      _id: toObjectId(generateObjectIdString()),
+      title: "Hello",
+      author: toObjectId(authorId),
+    });
 
     // Replace this join-config literal with whatever shape Step 1 confirmed.
     const query = applyJoin(Post.findOne({ title: "Hello" }), {
@@ -1941,10 +2053,12 @@ git commit -m "feat(adapter): translate Better Auth join configs into Mongoose p
 ## Task 15: Transactions with graceful standalone fallback
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/transaction.ts`
 - Test: `packages/better-auth-mongoose/test/transaction.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Connection` from `mongoose`, `Map<string, Model<any>>`, and the operation factories from Tasks 11-13 (to build a transaction-scoped `CustomAdapter`).
 - Produces: `createTransactionConfig(connection: Connection, models: Map<string, Model<any>>, enabled: boolean): false | ((cb: (adapter: CustomAdapter) => Promise<any>) => Promise<any>)` — the exact shape `AdapterFactoryConfig["transaction"]` expects, verified via Context7 against the Drizzle adapter's real transaction wiring (`transaction: enabled ? (cb) => db.transaction(...) : false`).
 
@@ -1962,7 +2076,10 @@ import { createTransactionConfig } from "../src/transaction";
 import type { BetterAuthDBSchema } from "better-auth/db";
 
 const dbSchema: BetterAuthDBSchema = {
-  user: { modelName: "user", fields: { email: { type: "string", required: true, fieldName: "email" } } },
+  user: {
+    modelName: "user",
+    fields: { email: { type: "string", required: true, fieldName: "email" } },
+  },
 } as unknown as BetterAuthDBSchema;
 
 describe("createTransactionConfig on a replica set", () => {
@@ -2104,12 +2221,14 @@ git commit -m "feat(adapter): transactions via Mongoose sessions with standalone
 ## Task 16: Assemble the adapter (`adapter.ts`, `create-schema.ts`, `index.ts`)
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/src/adapter.ts`
 - Create: `packages/better-auth-mongoose/src/create-schema.ts`
 - Modify: `packages/better-auth-mongoose/src/index.ts` (replace stub with real exports)
 - Test: `packages/better-auth-mongoose/test/adapter-smoke.test.ts`
 
 **Interfaces:**
+
 - Consumes: everything from Tasks 7-15, plus the real `createAdapterFactory` from `better-auth/db` (verified signature: `createAdapterFactory({ config: AdapterFactoryConfig, adapter: (helpers) => CustomAdapter }): (options: BetterAuthOptions) => DBAdapter`).
 - Produces: `mongooseAdapter(connection, options?)` — the package's headline export, and `AuthModels`-style typed model access via `index.ts`.
 
@@ -2142,7 +2261,11 @@ describe("mongooseAdapter", () => {
     });
 
     const response = await auth.api.signUpEmail({
-      body: { email: "smoke@example.com", password: "correct-horse-battery-staple", name: "Smoke Test" },
+      body: {
+        email: "smoke@example.com",
+        password: "correct-horse-battery-staple",
+        name: "Smoke Test",
+      },
     });
 
     expect(response.user.email).toBe("smoke@example.com");
@@ -2176,7 +2299,9 @@ export function makeCreateSchema(): NonNullable<CustomAdapter["createSchema"]> {
 
     for (const [name, table] of Object.entries(tables)) {
       const definition = buildSchemaDefinition((table as any).fields);
-      lines.push(`export const ${name}Schema = new Schema(${JSON.stringify(definition, null, 2)});`);
+      lines.push(
+        `export const ${name}Schema = new Schema(${JSON.stringify(definition, null, 2)});`,
+      );
       lines.push("");
     }
 
@@ -2270,9 +2395,11 @@ git commit -m "feat(adapter): assemble mongooseAdapter() via createAdapterFactor
 ## Task 17: `@better-auth/test-utils` contract-parity suite
 
 **Files:**
+
 - Test: `packages/better-auth-mongoose/test/adapter.test.ts`
 
 **Interfaces:**
+
 - Consumes: `testAdapter`/`createTestSuite` from `@better-auth/test-utils/adapter` (verified via Context7), `mongooseAdapter` (Task 16).
 - Produces: the README-linkable "passes Better Auth's own adapter test suite" proof (Phase 1 of the spec's endorsement path).
 
@@ -2337,10 +2464,12 @@ git commit -m "test(adapter): add @better-auth/test-utils contract-parity suite"
 ## Task 18: The differentiator test — `populate.test.ts`
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/test/fixtures/post.ts`
 - Test: `packages/better-auth-mongoose/test/populate.test.ts`
 
 **Interfaces:**
+
 - Consumes: `mongooseAdapter` (Task 16), a consumer-defined `Post` model referencing `user` by `ObjectId`.
 - Produces: the single test the README leads with (G2/G4 proof) — must be independent of `examples/nestjs-mongoose` (Task 23), which proves the same thing at the application level.
 
@@ -2393,7 +2522,11 @@ describe("the differentiator: a consumer's own model can .populate() a Better-Au
     });
 
     const { user } = await auth.api.signUpEmail({
-      body: { email: "author@example.com", password: "correct-horse-battery-staple", name: "Post Author" },
+      body: {
+        email: "author@example.com",
+        password: "correct-horse-battery-staple",
+        name: "Post Author",
+      },
     });
 
     const Post = definePostModel(connection);
@@ -2403,7 +2536,10 @@ describe("the differentiator: a consumer's own model can .populate() a Better-Au
       author: toObjectId(user.id),
     });
 
-    const post = await Post.findOne({ title: "Hello, populate()" }).populate("author").lean().exec();
+    const post = await Post.findOne({ title: "Hello, populate()" })
+      .populate("author")
+      .lean()
+      .exec();
 
     expect((post as any).author).toBeDefined();
     expect((post as any).author._id.toString()).toBe(user.id);
@@ -2429,6 +2565,7 @@ git commit -m "test(adapter): prove consumer models can .populate() Better-Auth-
 ## Task 19: Core adapter README
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose/README.md`
 
 **Interfaces:** None (docs only). Must reference only APIs that exist as of Task 18 — no forward references to the tenant package's API.
@@ -2436,6 +2573,7 @@ git commit -m "test(adapter): prove consumer models can .populate() Better-Auth-
 - [ ] **Step 1: Write the README**
 
 Structure, in this order (per G8 — the differentiator leads):
+
 1. One-paragraph pitch + badges (npm version, CI status, license, "passes @better-auth/test-utils" — link the actual `adapter.test.ts` CI job).
 2. **"The problem"** — link issue #1492, discussion #9364, issue #6289, discussion #1921 by URL, one sentence each on what's broken (pulled directly from the design spec §1.1 — do not paraphrase into vaguer claims than the spec makes).
 3. **"The proof"** — the exact code from `test/populate.test.ts` (Task 18), presented as a runnable snippet, with a one-line note: "This is a real test in this repo, not a doc-only example — see `packages/better-auth-mongoose/test/populate.test.ts`."
@@ -2466,11 +2604,13 @@ git commit -m "docs(adapter): write README leading with the populate() different
 ## Task 20: Tenant package — scoped-query middleware
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose-tenant/src/types.ts`
 - Create: `packages/better-auth-mongoose-tenant/src/scoped-query.ts`
 - Test: `packages/better-auth-mongoose-tenant/test/scoped-query.test.ts`
 
 **Interfaces:**
+
 - Produces: `applyTenantScope(model: Model<any>, tenantField: string, getTenantId: () => string | undefined): void` — registers Mongoose `pre` hooks (`find`, `findOne`, `findOneAndUpdate`, `countDocuments`, `save`) that inject/enforce the tenant field. Used by Task 21's `plugin.ts`.
 
 - [ ] **Step 1: Write `types.ts`**
@@ -2513,7 +2653,10 @@ afterAll(async () => {
 describe("applyTenantScope", () => {
   it("injects the active tenant id into find queries automatically", async () => {
     let activeTenantId = "tenant-a";
-    const Project = connection.model("ScopedProject", new Schema({ name: String, organizationId: String }));
+    const Project = connection.model(
+      "ScopedProject",
+      new Schema({ name: String, organizationId: String }),
+    );
     applyTenantScope(Project, "organizationId", () => activeTenantId);
 
     await Project.collection.insertMany([
@@ -2533,7 +2676,10 @@ describe("applyTenantScope", () => {
 
   it("stamps the tenant id onto new documents on save", async () => {
     const activeTenantId = "tenant-c";
-    const Doc = connection.model("ScopedDoc", new Schema({ title: String, organizationId: String }));
+    const Doc = connection.model(
+      "ScopedDoc",
+      new Schema({ title: String, organizationId: String }),
+    );
     applyTenantScope(Doc, "organizationId", () => activeTenantId);
 
     const created = await new Doc({ title: "untitled" }).save();
@@ -2541,7 +2687,10 @@ describe("applyTenantScope", () => {
   });
 
   it("throws instead of silently querying across tenants when no active tenant id is available", async () => {
-    const Doc2 = connection.model("ScopedDoc2", new Schema({ title: String, organizationId: String }));
+    const Doc2 = connection.model(
+      "ScopedDoc2",
+      new Schema({ title: String, organizationId: String }),
+    );
     applyTenantScope(Doc2, "organizationId", () => undefined);
 
     await expect(Doc2.find({}).exec()).rejects.toThrow(/no active tenant/i);
@@ -2612,11 +2761,13 @@ git commit -m "feat(tenant): add tenant-scoped query middleware for app-level mo
 ## Task 21: Tenant package — `tenantScoped()` Better Auth plugin
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose-tenant/src/plugin.ts`
 - Modify: `packages/better-auth-mongoose-tenant/src/index.ts`
 - Test: `packages/better-auth-mongoose-tenant/test/plugin.test.ts`
 
 **Interfaces:**
+
 - Consumes: `applyTenantScope` (Task 20), `TenantScopedOptions` (Task 20), Better Auth's `BetterAuthPlugin` type.
 - Produces: `tenantScoped(options: TenantScopedOptions): BetterAuthPlugin` — the public plugin export.
 
@@ -2716,6 +2867,7 @@ git commit -m "feat(tenant): add tenantScoped() Better Auth plugin"
 ## Task 22: Tenant README + M6 upstream investigation doc
 
 **Files:**
+
 - Create: `packages/better-auth-mongoose-tenant/README.md`
 - Create: `docs/M6-active-org-investigation.md`
 
@@ -2745,6 +2897,7 @@ git commit -m "docs(tenant): add tenant package README and M6 active-organizatio
 ## Task 23: Example app — NestJS + Mongoose + this adapter, verified in CI
 
 **Files:**
+
 - Create: `examples/nestjs-mongoose/{package.json,tsconfig.json,README.md}`
 - Create: `examples/nestjs-mongoose/src/{main.ts,app.module.ts}`
 - Create: `examples/nestjs-mongoose/src/auth/{auth.module.ts,auth.config.ts,user-schema-extension.ts}`
@@ -2753,6 +2906,7 @@ git commit -m "docs(tenant): add tenant package README and M6 active-organizatio
 - Modify: `.github/workflows/ci.yml` (add example-app job)
 
 **Interfaces:**
+
 - Consumes: `mongooseAdapter` and `MongooseAdapterOptions` from the published-shape `better-auth-mongoose` package (via `workspace:^` so CI always tests the in-repo version, not npm).
 - Produces: the G8-required runnable example, exercised headlessly in CI via `supertest` + `mongodb-memory-server`.
 
@@ -2874,7 +3028,11 @@ describe("NestJS + Mongoose + better-auth-mongoose example", () => {
 
     const signUp = await request(server)
       .post("/api/auth/sign-up/email")
-      .send({ email: "example@example.com", password: "correct-horse-battery-staple", name: "Example User" });
+      .send({
+        email: "example@example.com",
+        password: "correct-horse-battery-staple",
+        name: "Example User",
+      });
 
     expect(signUp.status).toBe(200);
     const userId: string = signUp.body.user.id;
@@ -2903,19 +3061,19 @@ Expected: PASS. Fix any wiring mismatch between the controller's actual route sh
 Append a job to `.github/workflows/ci.yml`:
 
 ```yaml
-  example-e2e:
-    needs: lint-and-typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter better-auth-mongoose build
-      - run: pnpm --filter nestjs-mongoose-example test:e2e
+example-e2e:
+  needs: lint-and-typecheck
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm --filter better-auth-mongoose build
+    - run: pnpm --filter nestjs-mongoose-example test:e2e
 ```
 
 - [ ] **Step 6: Write the example README**
@@ -2934,6 +3092,7 @@ git commit -m "docs: add runnable NestJS + Mongoose example, verified in CI"
 ## Task 24: Root README, full workspace verification, and GitHub repo creation
 
 **Files:**
+
 - Create: `README.md` (repo root)
 - Modify: none else — this task is verification + publish, not new source
 
@@ -2987,7 +3146,7 @@ Summarize (do not execute without further confirmation): remaining manual steps 
 
 ## Self-Review Notes
 
-**Spec coverage:** G1 (Task 16), G2 (Tasks 9, 18), G3 (single `connection` param threaded everywhere, no second client), G4 (Tasks 8-9, proven in Task 18), G5 (Task 17), G6 (Tasks 20-22), G7/Phase 3-5 of the spec (explicitly deferred to Task 24 Step 7, not silently dropped), G8 (Tasks 18, 23, and the README-accuracy checks in Tasks 19/24). Non-goals (no NestJS wrapper as a *dependency-of* the adapter, no multi-DB tenancy, no Mongoose <6) are respected by not building against them — nothing in the plan violates them.
+**Spec coverage:** G1 (Task 16), G2 (Tasks 9, 18), G3 (single `connection` param threaded everywhere, no second client), G4 (Tasks 8-9, proven in Task 18), G5 (Task 17), G6 (Tasks 20-22), G7/Phase 3-5 of the spec (explicitly deferred to Task 24 Step 7, not silently dropped), G8 (Tasks 18, 23, and the README-accuracy checks in Tasks 19/24). Non-goals (no NestJS wrapper as a _dependency-of_ the adapter, no multi-DB tenancy, no Mongoose <6) are respected by not building against them — nothing in the plan violates them.
 
 **Placeholder scan:** no "TBD"/"add error handling" left in place; the two spots with genuine unresolved-until-runtime uncertainty (`JoinConfig`'s exact shape in Task 14, `transaction`'s placement in Task 16, `BetterAuthPlugin`'s init hook in Task 21) are each handled as a concrete "read the real type, then adjust" step with a fallback described — not a vague "handle appropriately."
 
