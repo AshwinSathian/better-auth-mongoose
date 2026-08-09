@@ -1,0 +1,67 @@
+name: Bug report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package?
+      options:
+        - better-auth-mongoose
+        - better-auth-mongoose-tenant
+    validations:
+      required: true
+
+  - type: input
+    id: adapter-version
+    attributes:
+      label: Package version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: better-auth-version
+    attributes:
+      label: better-auth version
+      placeholder: e.g. 1.6.26
+    validations:
+      required: true
+
+  - type: input
+    id: mongoose-version
+    attributes:
+      label: mongoose version
+      placeholder: e.g. 9.9.1
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: e.g. 20.11.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: A minimal reproduction repo, or a self-contained code snippet. Issues without a reproduction are much harder to fix and may be closed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
