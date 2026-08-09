@@ -54,7 +54,13 @@ function hasUserProvidedGenerateId(options: BetterAuthOptions): boolean {
   return typeof options.advanced?.database?.generateId === "function";
 }
 
-function coerceToObjectId(value: unknown): unknown {
+/**
+ * Best-effort string -> ObjectId coercion, falling back to the original
+ * value on failure. Exported for reuse by where-clause filtering
+ * (operations/read.ts), which needs the same tolerant coercion for query
+ * values against ObjectId-typed paths.
+ */
+export function coerceToObjectId(value: unknown): unknown {
   if (value instanceof Types.ObjectId) return value;
   if (Array.isArray(value)) return value.map((v) => coerceToObjectId(v));
   if (typeof value === "string") {
