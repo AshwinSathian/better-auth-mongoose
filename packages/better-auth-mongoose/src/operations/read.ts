@@ -1,3 +1,4 @@
+import type { ClientSession } from "mongoose";
 import type { CustomAdapter, CleanedWhere } from "@better-auth/core/db/adapter";
 import { coerceToObjectId } from "../id-mapping";
 import { applyJoin } from "../join";
@@ -86,13 +87,14 @@ function toProjection(select: string[] | undefined): Record<string, 1> | undefin
 export function makeFindOne(
   models: Map<string, AnyModel>,
   getFieldName: GetFieldName,
+  session?: ClientSession,
 ): CustomAdapter["findOne"] {
   return async ({ model, where, select, join }) => {
     const mongooseModel = models.get(model);
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
 
     const filter = whereToMongoFilter(mongooseModel, model, where, getFieldName);
-    let query = mongooseModel.findOne(filter, toProjection(select));
+    let query = mongooseModel.findOne(filter, toProjection(select)).session(session ?? null);
     query = applyJoin(query, join, model, getFieldName);
 
     // CustomAdapter's methods are individually generic (`<T>`), which a plain
@@ -107,13 +109,17 @@ export function makeFindOne(
 export function makeFindMany(
   models: Map<string, AnyModel>,
   getFieldName: GetFieldName,
+  session?: ClientSession,
 ): CustomAdapter["findMany"] {
   return async ({ model, where, limit, select, sortBy, offset, join }) => {
     const mongooseModel = models.get(model);
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
 
     const filter = whereToMongoFilter(mongooseModel, model, where, getFieldName);
-    let query = mongooseModel.find(filter, toProjection(select)).limit(limit);
+    let query = mongooseModel
+      .find(filter, toProjection(select))
+      .session(session ?? null)
+      .limit(limit);
     if (offset) query = query.skip(offset);
     if (sortBy) {
       let sortField = getFieldName({ model, field: sortBy.field });
@@ -134,12 +140,13 @@ export function makeFindMany(
 export function makeCount(
   models: Map<string, AnyModel>,
   getFieldName: GetFieldName,
+  session?: ClientSession,
 ): CustomAdapter["count"] {
   return async ({ model, where }) => {
     const mongooseModel = models.get(model);
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
 
     const filter = whereToMongoFilter(mongooseModel, model, where, getFieldName);
-    return mongooseModel.countDocuments(filter);
+    return mongooseModel.countDocuments(filter).session(session ?? null);
   };
 }
