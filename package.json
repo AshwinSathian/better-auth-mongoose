@@ -1,6 +1,7 @@
 {
   "name": "better-auth-mongoose-monorepo",
   "private": true,
+  "type": "module",
   "license": "MIT",
   "author": "Ashwin Sathian",
   "packageManager": "pnpm@9.15.0",
