@@ -4,6 +4,7 @@ import { createTestConnection, teardownTestConnection } from "./setup";
 import { registerModels } from "../src/schema/register-models";
 import { makeCreate } from "../src/operations/create";
 import { makeFindOne, makeFindMany, makeCount } from "../src/operations/read";
+import { makeUpdate, makeUpdateMany } from "../src/operations/update";
 import { generateObjectIdString } from "../src/id-mapping";
 import type { BetterAuthDBSchema } from "@better-auth/core/db";
 import type { CleanedWhere } from "@better-auth/core/db/adapter";
@@ -112,5 +113,40 @@ describe("create + findOne + findMany + count", () => {
     });
 
     expect(results).toHaveLength(1);
+  });
+});
+
+describe("update + updateMany", () => {
+  it("updates a single matching document and returns it, without touching other fields", async () => {
+    const update = makeUpdate(models, identityGetFieldName);
+
+    const result = await update({
+      model: "user",
+      where: whereEq("email", "a@example.com"),
+      update: { name: "Ada Lovelace" },
+    });
+
+    expect((result as any)?.name).toBe("Ada Lovelace");
+    expect((result as any)?.email).toBe("a@example.com"); // untouched, proves $set semantics
+  });
+
+  it("returns null when update matches nothing", async () => {
+    const update = makeUpdate(models, identityGetFieldName);
+    const result = await update({
+      model: "user",
+      where: whereEq("email", "ghost@example.com"),
+      update: { name: "Nobody" },
+    });
+    expect(result).toBeNull();
+  });
+
+  it("updates many documents and returns the modified count", async () => {
+    const updateMany = makeUpdateMany(models, identityGetFieldName);
+    const count = await updateMany({
+      model: "user",
+      where: [],
+      update: { name: "Everyone" },
+    });
+    expect(count).toBeGreaterThanOrEqual(2);
   });
 });
