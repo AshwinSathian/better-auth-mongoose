@@ -93,7 +93,7 @@ export function makeFindOne(
 
     const filter = whereToMongoFilter(mongooseModel, model, where, getFieldName);
     let query = mongooseModel.findOne(filter, toProjection(select));
-    query = applyJoin(query, join);
+    query = applyJoin(query, join, model, getFieldName);
 
     // CustomAdapter's methods are individually generic (`<T>`), which a plain
     // arrow function implementing the interface can't bind to by name — this
@@ -120,7 +120,7 @@ export function makeFindMany(
       if (sortField === "id") sortField = "_id";
       query = query.sort({ [sortField]: sortBy.direction === "asc" ? 1 : -1 });
     }
-    query = applyJoin(query, join);
+    query = applyJoin(query, join, model, getFieldName);
 
     // CustomAdapter's methods are individually generic (`<T>`), which a plain
     // arrow function implementing the interface can't bind to by name — this
