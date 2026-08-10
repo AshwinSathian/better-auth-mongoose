@@ -1,5 +1,12 @@
+# script-src needs 'unsafe-inline': Next's App Router ships required inline
+# <script>self.__next_f.push(...)</script> tags carrying the RSC/hydration
+# payload, generated per build with no stable hash and no server available
+# under output: "export" to mint a per-request nonce. Without it, React
+# never hydrates and every client component (recipe tabs, copy buttons) is
+# dead on load. 'self' still blocks any externally-hosted (src=) script, so
+# this doesn't open the door to third-party script injection.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://github.com https://img.shields.io data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://github.com https://img.shields.io data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
