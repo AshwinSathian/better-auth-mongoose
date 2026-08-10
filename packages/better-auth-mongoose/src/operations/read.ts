@@ -1,4 +1,4 @@
-import type { ClientSession } from "mongoose";
+import { Types, type ClientSession } from "mongoose";
 import type { CustomAdapter, CleanedWhere } from "@better-auth/core/db/adapter";
 import { coerceToObjectId } from "../id-mapping";
 import { applyJoin } from "../join";
@@ -26,11 +26,35 @@ function escapeForMongoRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Marks a where-clause value that could not be coerced to a valid ObjectId
+ * against an ObjectId-typed path. Mongoose casts query filter values against
+ * the schema itself at execution time — independently of, and *after*,
+ * whatever coerceToObjectId already tried — and that cast is strict (throws
+ * CastError, doesn't fall back). So an invalid id (e.g. a caller checking
+ * "does this malformed id exist?") must never reach the query as a raw
+ * string on an ObjectId path; it's translated into a filter that
+ * deterministically matches (eq/in) or excludes (ne/not_in) nothing instead.
+ */
+const UNCOERCIBLE = Symbol("uncoercible-objectid");
+
 function coerceWhereValue(mongooseModel: AnyModel, field: string, value: unknown): unknown {
   const schemaType = mongooseModel.schema.path(field);
   if (schemaType?.instance !== "ObjectId") return value;
-  if (Array.isArray(value)) return value.map((v) => coerceToObjectId(v));
-  return coerceToObjectId(value);
+
+  if (Array.isArray(value)) {
+    // Drop entries that don't coerce rather than failing the whole query —
+    // an $in/$nin list with one malformed id shouldn't error on the valid
+    // ones. If nothing survives, the caller's operator branch (eq/in vs
+    // ne/not_in) decides what an empty list should mean.
+    const coerced = value
+      .map((v) => coerceToObjectId(v))
+      .filter((v): v is Types.ObjectId => v instanceof Types.ObjectId);
+    return coerced.length > 0 ? coerced : UNCOERCIBLE;
+  }
+
+  const coerced = coerceToObjectId(value);
+  return coerced instanceof Types.ObjectId ? coerced : UNCOERCIBLE;
 }
 
 export function whereToMongoFilter(
@@ -49,6 +73,19 @@ export function whereToMongoFilter(
     if (field === "id") field = "_id";
 
     const value = coerceWhereValue(mongooseModel, field, clause.value);
+
+    if (value === UNCOERCIBLE) {
+      if (clause.operator === "ne" || clause.operator === "not_in") {
+        // "not equal to a malformed id" is trivially true for every real
+        // document — omit the condition rather than querying at all.
+        continue;
+      }
+      // eq/in/gt/gte/lt/lte/contains/starts_with/ends_with against a
+      // malformed id can never match a real document.
+      (clause.connector === "OR" ? orClauses : andClauses).push({ [field]: { $in: [] } });
+      continue;
+    }
+
     let condition: Record<string, unknown>;
 
     switch (clause.operator) {
@@ -79,9 +116,20 @@ export function whereToMongoFilter(
   return filter;
 }
 
-function toProjection(select: string[] | undefined): Record<string, 1> | undefined {
+function toProjection(
+  model: string,
+  select: string[] | undefined,
+  getFieldName: GetFieldName,
+): Record<string, 1> | undefined {
   if (!select || select.length === 0) return undefined;
-  return select.reduce((acc, field) => ({ ...acc, [field]: 1 }), {} as Record<string, 1>);
+  return select.reduce(
+    (acc, logicalField) => {
+      let field = getFieldName({ model, field: logicalField });
+      if (field === "id") field = "_id";
+      return { ...acc, [field]: 1 };
+    },
+    {} as Record<string, 1>,
+  );
 }
 
 export function makeFindOne(
@@ -94,7 +142,9 @@ export function makeFindOne(
     if (!mongooseModel) throw new Error(`better-auth-mongoose: unknown model "${model}"`);
 
     const filter = whereToMongoFilter(mongooseModel, model, where, getFieldName);
-    let query = mongooseModel.findOne(filter, toProjection(select)).session(session ?? null);
+    let query = mongooseModel
+      .findOne(filter, toProjection(model, select, getFieldName))
+      .session(session ?? null);
     query = applyJoin(query, join, model, getFieldName);
 
     // CustomAdapter's methods are individually generic (`<T>`), which a plain
@@ -117,7 +167,7 @@ export function makeFindMany(
 
     const filter = whereToMongoFilter(mongooseModel, model, where, getFieldName);
     let query = mongooseModel
-      .find(filter, toProjection(select))
+      .find(filter, toProjection(model, select, getFieldName))
       .session(session ?? null)
       .limit(limit);
     if (offset) query = query.skip(offset);
