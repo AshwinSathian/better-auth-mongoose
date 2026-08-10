@@ -186,8 +186,14 @@ describe("applyTenantScope", () => {
     const created = await Item.create({ name: "via create" });
     expect(created.get("organizationId")).toBe("tenant-a");
 
-    const insertedOne = await Item.insertOne({ name: "via insertOne" });
-    expect(insertedOne.get("organizationId")).toBe("tenant-a");
+    // insertOne() doesn't exist before Mongoose 8 (confirmed against a real
+    // mongoose 7 install, not assumed) — guarded so this test still proves
+    // what it can on the peer range's older majors instead of failing on a
+    // method that genuinely isn't there to test.
+    if (typeof Item.insertOne === "function") {
+      const insertedOne = await Item.insertOne({ name: "via insertOne" });
+      expect(insertedOne.get("organizationId")).toBe("tenant-a");
+    }
 
     const [a, b] = await Item.create([{ name: "array 1" }, { name: "array 2" }]);
     expect(a?.get("organizationId")).toBe("tenant-a");

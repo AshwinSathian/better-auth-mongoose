@@ -189,4 +189,76 @@ describe("exec-time enforcement", () => {
     (query as unknown as { op: string }).op = "someFutureMongooseOp";
     await expect(query.exec()).rejects.toThrow(/don't know how to safely scope/i);
   });
+
+  it("throws from a direct bulkWrite() call instead of leaving it silently unscoped", async () => {
+    const activeTenantId = "tenant-a";
+    const Widget = connection.model(
+      "ExecScopedBulkWriteWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => activeTenantId);
+
+    await expect(
+      Widget.bulkWrite([{ insertOne: { document: { name: "sneaky" } } }]),
+    ).rejects.toThrow(/bulkWrite\(\).*not scoped/i);
+  });
+
+  it("still lets bulkSave() call the true bulkWrite() internally despite the guard on direct calls", async () => {
+    const activeTenantId = "tenant-a";
+    const Widget = connection.model(
+      "ExecScopedBulkSaveThroughGuardWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => activeTenantId);
+
+    // bulkSave() delegates to bulkWrite() internally via dynamic `this`
+    // dispatch. If the bulkWrite guard broke that delegation, this would
+    // throw the same "not scoped" error a direct call gets, instead of
+    // actually persisting.
+    await Widget.bulkSave([new Widget({ name: "via bulkSave" })]);
+    const row = await Widget.collection.findOne({ name: "via bulkSave" });
+    expect(row?.organizationId).toBe("tenant-a");
+  });
+
+  // count()/findOneAndRemove()/findByIdAndRemove()/remove()/update() only
+  // exist pre-Mongoose-9 (this package's own pinned devDependency doesn't
+  // have them), so these are feature-detected rather than assumed present.
+  // They still run for real in the Mongoose 6/7/8 compatibility CI job,
+  // which installs real older majors that do have them.
+  it("scopes the legacy count/findOneAndRemove/findByIdAndRemove/remove/update methods where present", async () => {
+    const activeTenantId = "tenant-a";
+    const RealWidget = connection.model(
+      "ExecScopedLegacyOpsWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(RealWidget, "organizationId", () => activeTenantId);
+    // Not present in this package's own pinned Mongoose 9 types at all, so
+    // cast once here rather than scattering `as unknown as ...` everywhere
+    // a legacy method gets called below.
+
+    const Widget = RealWidget as any;
+
+    await Widget.collection.insertMany([
+      { name: "mine", organizationId: "tenant-a" },
+      { name: "theirs", organizationId: "tenant-b" },
+    ]);
+
+    if (typeof Widget.count === "function") {
+      await expect(Widget.count({}).exec()).resolves.toBe(1);
+    }
+    if (typeof Widget.findOneAndRemove === "function") {
+      await expect(Widget.findOneAndRemove({ name: "theirs" }).exec()).resolves.toBeNull();
+    }
+    if (typeof Widget.remove === "function") {
+      await Widget.remove({}).exec();
+      const remaining = await Widget.collection.countDocuments({ organizationId: "tenant-b" });
+      expect(remaining).toBe(1);
+    }
+    if (typeof Widget.update === "function") {
+      await Widget.collection.insertOne({ name: "for-update", organizationId: "tenant-a" });
+      await Widget.update({ name: "for-update" }, { $set: { organizationId: "tenant-b" } }).exec();
+      const row = await Widget.collection.findOne({ name: "for-update" });
+      expect(row?.organizationId).toBe("tenant-a");
+    }
+  });
 });

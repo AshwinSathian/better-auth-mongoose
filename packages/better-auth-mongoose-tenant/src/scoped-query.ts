@@ -181,20 +181,62 @@ export function applyTenantScope(
       ...rest,
     );
 
-  // bulkSave() takes already-constructed Document instances the caller
-  // built beforehand (outside save()/$save()/insertMany(), so none of the
-  // above reaches them) and turns them into bulkWrite ops directly. Same
-  // stamping rule, applied to each document in place before delegating.
-  // Guarded on existence: bulkSave() is a newer addition to Mongoose's
-  // static surface and may not exist on older majors in the ^6.0.0 peer
-  // range this package targets but doesn't test against directly.
-  if (typeof mutableModel.bulkSave === "function") {
-    const originalBulkSave = mutableModel.bulkSave.bind(model);
-    mutableModel.bulkSave = (documents?: unknown, ...rest: unknown[]) => {
-      for (const doc of (documents as unknown[] | undefined) ?? []) {
-        stampEntry(doc);
-      }
-      return originalBulkSave(documents, ...rest);
+  // bulkWrite() takes heterogeneous, driver-shaped raw operations this
+  // package can't safely transform generically the way the single-shape
+  // filter/replacement methods above can. Left undocumented, that's a real
+  // hole: a caller who's trusting the model is scoped can call
+  // Model.bulkWrite([...]) directly and get zero protection and zero
+  // warning. It throws the same way estimatedDocumentCount() does, rather
+  // than leaving the gap merely written down in a README somewhere a
+  // caller has to already know to look.
+  //
+  // bulkSave() (below) calls bulkWrite() internally via dynamic `this`
+  // dispatch, though, so a naive throw-on-every-call guard would also
+  // break bulkSave's own delegation. A shared "am I being called from
+  // inside bulkSave" boolean flag would work for the common sequential
+  // case, but is a real (if narrow) race under concurrent bulkSave/
+  // bulkWrite calls against the same model, since Mongoose's own bulkSave
+  // has an await between setting such a flag and its internal bulkWrite
+  // call, during which an unrelated concurrent bulkWrite() call could
+  // observe the flag as still set. Passing a private stand-in object as
+  // `this` to the original bulkSave instead avoids that entirely: it
+  // inherits every other property from the real model via the prototype
+  // chain, so nothing else bulkSave relies on breaks, but its own
+  // `bulkWrite` is shadowed back to the true, unguarded original, isolated
+  // per call with no shared mutable state for a concurrent call to race.
+  if (typeof mutableModel.bulkWrite === "function") {
+    const trueOriginalBulkWrite = mutableModel.bulkWrite.bind(model);
+
+    // bulkSave() takes already-constructed Document instances the caller
+    // built beforehand (outside save()/$save()/insertMany(), so none of
+    // the above reaches them) and turns them into bulkWrite ops directly.
+    // Same stamping rule, applied to each document in place before
+    // delegating. Guarded on existence: confirmed present on mongoose 6-9,
+    // but kept defensive rather than assumed for any future major.
+    if (typeof mutableModel.bulkSave === "function") {
+      const originalBulkSaveFn = mutableModel.bulkSave;
+      mutableModel.bulkSave = (documents?: unknown, ...rest: unknown[]) => {
+        for (const doc of (documents as unknown[] | undefined) ?? []) {
+          stampEntry(doc);
+        }
+        const bulkWriteEscapeHatch = Object.create(model) as Record<string, unknown>;
+        bulkWriteEscapeHatch.bulkWrite = trueOriginalBulkWrite;
+        return originalBulkSaveFn.call(bulkWriteEscapeHatch, documents, ...rest);
+      };
+    }
+
+    // Async, not a plain throwing function: Model.bulkWrite() is documented
+    // to always return a Promise, and a synchronous throw here would break
+    // that contract the same way a synchronous Query.prototype.exec
+    // override did in exec-scope.ts (caught by this exact package's own
+    // test suite there, same class of bug, same fix).
+    mutableModel.bulkWrite = async () => {
+      throw new Error(
+        `better-auth-mongoose-tenant: bulkWrite() is not scoped by tenant on "${model.modelName}". ` +
+          `It takes heterogeneous, driver-shaped operations this package can't transform generically. ` +
+          `Scope each operation's filter/document yourself, or use bulkSave()/insertMany()/the scoped ` +
+          `find/update/delete methods instead.`,
+      );
     };
   }
 

@@ -57,6 +57,42 @@ jobs:
         run: pnpm --filter better-auth-mongoose exec node scripts/warm-mongodb-binary.mjs
       - run: pnpm test
 
+  # better-auth-mongoose-tenant's exec-time enforcement (exec-scope.ts)
+  # reads Query.prototype.exec, getFilter()/getUpdate(), and Mongoose's own
+  # internal op set directly, not just the documented public methods most
+  # adapters call. That's a real version-drift risk across the package's
+  # claimed ^6.0.0-^9.0.0 peer range, verified here rather than assumed: no
+  # build step, since the tests import from src/ directly and building
+  # against an older Mongoose's types isn't the point of this job (that's
+  # what lint-and-typecheck already covers, against the pinned version).
+  tenant-mongoose-compat:
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mongoose-version: ["^6.0.0", "^7.0.0", "^8.0.0"]
+    env:
+      MONGOMS_VERSION: 8.2.6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Swap in the matrix Mongoose version for the tenant package
+        run: pnpm --filter better-auth-mongoose-tenant add -D mongoose@${{ matrix.mongoose-version }}
+      - name: Cache mongodb-memory-server binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
+      - name: Pre-download the MongoDB binary once, serially
+        run: pnpm --filter better-auth-mongoose-tenant exec node scripts/warm-mongodb-binary.mjs
+      - run: pnpm --filter better-auth-mongoose-tenant exec vitest run
+
   example-e2e:
     needs: lint-and-typecheck
     runs-on: ubuntu-latest

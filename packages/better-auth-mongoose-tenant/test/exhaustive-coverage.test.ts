@@ -31,12 +31,22 @@ const WRAPPED_AS_STATIC = new Set([
 // (that's the whole bug this package's second review round found);
 // `exists`/`distinct`/`replaceOne` could be wrapped too, but doing so would
 // be redundant given exec-time enforcement already makes them correct.
+// `count`/`findOneAndRemove`/`findByIdAndRemove`/`remove`/`update` only
+// exist pre-Mongoose-9 (verified against real mongoose 6 and 7 installs,
+// not assumed) and are covered the same way: findByIdAndRemove shares the
+// exact "findOneAndRemove" op with findOneAndRemove, so one entry in
+// exec-scope.ts's FILTER_ONLY_OPS covers both.
 const COVERED_BY_EXEC_ENFORCEMENT_ONLY = new Set([
   "where",
   "$where",
   "exists",
   "distinct",
   "replaceOne",
+  "count",
+  "findOneAndRemove",
+  "findByIdAndRemove",
+  "remove",
+  "update",
 ]);
 
 // Every remaining Model static, with the reason it's neither wrapped nor
@@ -52,14 +62,21 @@ const DOCUMENTED_EXCLUSIONS: Record<string, string> = {
   // returning an all-tenants count.
   estimatedDocumentCount:
     "no filter to scope by; exec-scope.ts throws instead of running it unscoped",
-  // Heterogeneous raw driver ops; bulkSave() (wrapped) calls this
-  // internally via dynamic `this` dispatch, so a throw-guard here would
-  // also break bulkSave's own delegation.
-  bulkWrite:
-    "heterogeneous raw ops; bulkSave() depends on calling through to the real implementation",
+  // Heterogeneous raw driver ops this package can't transform generically.
+  // Actively guarded, not just documented: throws when called directly,
+  // the same way estimatedDocumentCount() does. bulkSave() (wrapped) still
+  // calls the true, unguarded implementation internally via a private
+  // stand-in `this`, so its own delegation isn't affected by the guard.
+  bulkWrite: "heterogeneous raw ops; throws when called directly, same as estimatedDocumentCount()",
   // Pipeline-based, not filter-based.
   aggregate:
     "pipeline-based; scoping means prepending $match, too pipeline-specific to do generically",
+  // Server-side map-reduce, deprecated by MongoDB itself in favor of the
+  // aggregation pipeline. Confirmed by reading its mongoose 6 source that
+  // it never constructs a Query at all (goes straight to the driver via
+  // this.db.base), so exec-time enforcement structurally can't reach it
+  // even if it still existed on modern Mongoose (it doesn't, past 6.x).
+  mapReduce: "never constructs a Query; raw driver-level map-reduce, deprecated by MongoDB itself",
   // Not a query at all.
   watch: "a change-stream subscription, not a query",
   startSession: "session infrastructure, not data access",

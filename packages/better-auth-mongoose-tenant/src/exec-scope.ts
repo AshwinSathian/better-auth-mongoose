@@ -9,17 +9,32 @@ import { getTenantScopeConfig, requireTenantId, type TenantScopeConfig } from ".
  * read directly off Mongoose's own internals during development. Anything
  * not in one of these three buckets is treated as unknown and refused
  * rather than silently run unscoped (the final throw in enforce()).
+ *
+ * "count", "findOneAndRemove", "remove", and "update" are legacy ops
+ * verified empirically against real mongoose 6 and 7 installs, not from
+ * memory: Model.count(), Model.findOneAndRemove()/findByIdAndRemove()
+ * (which both construct a Query with op "findOneAndRemove", the same
+ * delegation pattern as findByIdAndDelete on modern Mongoose), Model
+ * .remove(), and Model.update() all still exist on those majors, and
+ * Mongoose 9's own opToThunk (which this file otherwise mirrors) dropped
+ * every one of them. Including them here is safe on 9 specifically because
+ * the methods that produce them don't exist there at all, so a Query can
+ * never carry these op values on that version; this is what makes the peer
+ * range down to ^6.0.0 actually true rather than aspirational.
  */
 const FILTER_ONLY_OPS = new Set([
   "find",
   "findOne",
   "countDocuments",
+  "count",
   "distinct",
   "deleteMany",
   "deleteOne",
   "findOneAndDelete",
+  "findOneAndRemove",
+  "remove",
 ]);
-const UPDATE_BODY_OPS = new Set(["updateOne", "updateMany", "findOneAndUpdate"]);
+const UPDATE_BODY_OPS = new Set(["updateOne", "updateMany", "findOneAndUpdate", "update"]);
 const REPLACEMENT_OPS = new Set(["replaceOne", "findOneAndReplace"]);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

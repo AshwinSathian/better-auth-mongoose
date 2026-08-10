@@ -97,10 +97,15 @@ Both layers run for anything the first one wraps: redundant there by design, and
 A few Model methods are deliberately left unscoped rather than half-solved:
 
 - **`estimatedDocumentCount()`** has no filter concept at all. It reads fast collection-level metadata, not a filtered query, so it can't be scoped by tenant. Calling it on a scoped model throws rather than silently returning every tenant's count; use `countDocuments({})` instead, which is scoped.
-- **`bulkWrite()`** takes heterogeneous, driver-shaped raw operations. `bulkSave()` (which is scoped) calls `bulkWrite()` internally, so `bulkWrite` itself is left unwrapped rather than guarded. A guard here would also break `bulkSave`'s own delegation. If you need bulk writes against a scoped model directly, scope each operation's filter/document yourself.
+- **`bulkWrite()`** takes heterogeneous, driver-shaped raw operations this package can't transform generically. Unlike the other exclusions here, this one is actively guarded, not just documented: calling it directly on a scoped model throws, the same way `estimatedDocumentCount()` does, rather than leaving a caller who's trusting the model is scoped with zero protection and zero warning. `bulkSave()` (which is scoped) still calls the true, unguarded `bulkWrite()` internally, so its own delegation isn't affected by the guard. Scope each operation's filter/document yourself if you need bulk writes directly.
 - **`aggregate()`** is pipeline-based, not filter-based. Scoping it generically would mean prepending a `$match` stage, which changes pipeline semantics in ways too specific to your own pipeline to do safely without knowing what it does.
+- **`mapReduce()`** (Mongoose 6 and earlier only; MongoDB itself deprecated server-side map-reduce in favor of the aggregation pipeline) never constructs a `Query` at all, so exec-time enforcement structurally can't reach it.
 - **`watch()`** is a change-stream subscription, not a query.
 - **`populate()`** and **`hydrate()`** operate on already-fetched data or plain objects; neither makes its own database round trip, so there's nothing to scope.
+
+## Mongoose version compatibility
+
+The exec-time enforcement layer reads `Query.prototype.exec`, `getFilter()`/`getUpdate()`, and Mongoose's own internal query-op classification, not just documented public methods, so version drift across Mongoose's `^6.0.0`-`^9.0.0` peer range is a real risk most adapters don't carry. That's verified, not assumed: CI runs the full test suite against real Mongoose 6, 7, 8, and 9 installs on every push. A handful of methods only exist on the older majors (`count`, `findOneAndRemove`, `findByIdAndRemove`, `remove`, `update`, all superseded by their modern equivalents and dropped by Mongoose 9) and are scoped the same way as their replacements; `insertOne()` only exists from Mongoose 8 onward.
 
 ## The Mongo-specific active-organization bug: already fixed upstream
 
