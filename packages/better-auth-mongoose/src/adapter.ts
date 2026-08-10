@@ -6,7 +6,7 @@ import type {
   DBTransactionAdapter,
 } from "@better-auth/core/db/adapter";
 import type { BetterAuthOptions } from "better-auth";
-import { registerModels } from "./schema/register-models";
+import { registerModels, getModelsReady } from "./schema/register-models";
 import {
   customIdGenerator,
   makeCustomTransformInput,
@@ -116,11 +116,7 @@ export function mongooseAdapter(connection: Connection, options: MongooseAdapter
     adapter: ({ schema, getFieldName }) => {
       lazyModels = registerModels(connection, schema, options);
       lazyGetFieldName = getFieldName;
-      lazyModelsReady = Promise.all(
-        Array.from(lazyModels.values()).map((model) =>
-          model.createCollection().then(() => undefined),
-        ),
-      ).then(() => undefined);
+      lazyModelsReady = getModelsReady(connection, lazyModels);
       return buildCustomAdapter(lazyModels, lazyGetFieldName);
     },
   });

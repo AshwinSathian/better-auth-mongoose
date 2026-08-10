@@ -53,4 +53,36 @@ describe("buildSchemaDefinition", () => {
     expect((def.userId as any).type).toBe(Schema.Types.ObjectId);
     expect((def.userId as any).ref).toBe("user");
   });
+
+  it("uses fieldName as the schema path when it differs from the logical key", () => {
+    // Better Auth's core renames data keys to fieldName (via getFieldName)
+    // before this adapter ever sees them — the Mongoose path must match, or
+    // every write silently drops the field once a consumer customizes it.
+    const fields: Record<string, DBFieldAttribute> = {
+      email: { type: "string", required: true, fieldName: "email_address" },
+    };
+
+    const def = buildSchemaDefinition(fields);
+
+    expect(def.email_address).toMatchObject({ type: String, required: true });
+    expect(def.email).toBeUndefined();
+  });
+
+  it("does not force ObjectId on a reference to a non-id field", () => {
+    // Join keys aren't always the primary key — a reference to some other
+    // field just holds a value of its own declared type, not an ObjectId.
+    const fields: Record<string, DBFieldAttribute> = {
+      oneToOne: {
+        type: "string",
+        required: true,
+        fieldName: "oneToOne",
+        references: { model: "user", field: "email", onDelete: "cascade" },
+      },
+    };
+
+    const def = buildSchemaDefinition(fields);
+
+    expect((def.oneToOne as any).type).toBe(String);
+    expect((def.oneToOne as any).ref).toBeUndefined();
+  });
 });
