@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --color-canvas: #faf9f6;
+  --color-canvas-raised: #ffffff;
+  --color-ink: #16150f;
+  --color-ink-soft: #55534a;
+  --color-ink-faint: #716e5f;
+  --color-line: #e4e1d7;
+  --color-accent: #b5490a;
+  --color-accent-ink: #fff7ee;
+  --color-code: #f1efe6;
+
+  --animate-fade-up: fade-up 0.5s ease-out both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #0c0b09;
+    --color-canvas-raised: #151310;
+    --color-ink: #f3f1e9;
+    --color-ink-soft: #b3ae9f;
+    --color-ink-faint: #8a8474;
+    --color-line: #2a2721;
+    --color-accent: #ff8a3d;
+    --color-accent-ink: #1a0f05;
+    --color-code: #120f0b;
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+.shiki-container pre,
+.shiki-container code {
+  background-color: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki-container .shiki,
+  .shiki-container .shiki span {
+    color: var(--shiki-dark) !important;
+    font-style: var(--shiki-dark-font-style) !important;
+    font-weight: var(--shiki-dark-font-weight) !important;
+    text-decoration: var(--shiki-dark-text-decoration) !important;
+  }
+}

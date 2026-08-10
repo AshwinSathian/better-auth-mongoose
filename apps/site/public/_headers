@@ -1,0 +1,29 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://github.com https://img.shields.io data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+# next/og's ImageResponse routes ship without a file extension (Next's own
+# server sets Content-Type at request time; a static host can't). Cloudflare
+# Pages would otherwise serve these as application/octet-stream, and
+# X-Content-Type-Options: nosniff above stops browsers/crawlers from
+# guessing around that, so link previews and the apple touch icon would
+# silently break without these overrides.
+/opengraph-image
+  Content-Type: image/png
+
+/twitter-image
+  Content-Type: image/png
+
+/apple-icon
+  Content-Type: image/png
+
+# Next fingerprints everything under _next/static/ by content hash, so a
+# path only ever refers to one immutable file — safe to cache for a year.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -1,0 +1,50 @@
+# better-auth-mongoose
+
+> A Mongoose-native database adapter for Better Auth, plus an optional tenant-scoping plugin.
+> Community project. Not affiliated with or endorsed by the Better Auth team.
+
+Better Auth's official MongoDB adapter talks to the raw `mongodb` driver, not Mongoose.
+better-auth-mongoose registers Better Auth's `user`, `session`, `account`, and other tables
+as real, extensible Mongoose models on a connection you already own, so `.populate()`, schema
+validation, and hooks work the same way they do for the rest of your app. It has zero direct
+dependencies and never pulls in the raw `mongodb` driver.
+
+## Packages
+
+- better-auth-mongoose (npm: https://www.npmjs.com/package/better-auth-mongoose) — the adapter.
+  Install: `pnpm add better-auth-mongoose mongoose better-auth`
+  README: https://github.com/AshwinSathian/better-auth-mongoose/tree/main/packages/better-auth-mongoose#readme
+- better-auth-mongoose-tenant (npm: https://www.npmjs.com/package/better-auth-mongoose-tenant) —
+  optional tenant-scoped query middleware for Better Auth's organization plugin. Install:
+  `pnpm add better-auth-mongoose-tenant`
+  README: https://github.com/AshwinSathian/better-auth-mongoose/tree/main/packages/better-auth-mongoose-tenant#readme
+
+## Minimal usage
+
+```ts
+import { betterAuth } from "better-auth";
+import { mongooseAdapter } from "better-auth-mongoose";
+import mongoose from "mongoose";
+
+await mongoose.connect(process.env.MONGO_URI!);
+
+export const auth = betterAuth({
+  database: mongooseAdapter(mongoose.connection),
+});
+```
+
+## Facts
+
+- License: MIT.
+- Source: https://github.com/AshwinSathian/better-auth-mongoose
+- Supported Mongoose versions: 6, 7, 8, 9 (peer range).
+- Supported Better Auth versions: 1.4, 1.5, 1.6 (peer range), verified in CI on every push.
+- Proof: packages/better-auth-mongoose/test/populate.test.ts is a real, CI-run test
+  demonstrating .populate() against a Better-Auth-created document. The adapter also
+  passes the official @better-auth/test-utils adapter contract suite.
+- Example app: examples/nestjs-mongoose, a full NestJS app exercised in CI over real HTTP.
+
+## Docs
+
+- Repository README: https://github.com/AshwinSathian/better-auth-mongoose#readme
+- Contributing: https://github.com/AshwinSathian/better-auth-mongoose/blob/main/CONTRIBUTING.md

@@ -6,6 +6,8 @@
 
 A Mongoose-native database adapter for [Better Auth](https://www.better-auth.com), plus an optional tenant-scoping plugin. Real, extensible Mongoose models for Better Auth's own tables: `.populate()`, schema validation, and hooks all work normally from your own application code, with no raw `mongodb` dependency.
 
+**[better-auth-mongoose.ashwinsathian.com](https://better-auth-mongoose.ashwinsathian.com)** — recipes, a compatibility matrix, and the full case for why this package exists.
+
 > **This is a community project, not affiliated with or endorsed by the Better Auth team.** It exists to close a real, long-standing gap between Better Auth and Mongoose (see below).
 
 ## The problem

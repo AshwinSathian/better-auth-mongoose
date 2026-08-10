@@ -1,12 +1,19 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const siteFiles = ["apps/site/**/*.{ts,tsx}"];
+const scopedToSite = (configs) => configs.map((config) => ({ ...config, files: siteFiles }));
 
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/.turbo/**"],
+    ignores: ["**/dist/**", "**/node_modules/**", "**/.turbo/**", "apps/site/.next/**", "apps/site/out/**"],
   },
+  ...scopedToSite(nextVitals),
+  ...scopedToSite(nextTs),
   {
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],

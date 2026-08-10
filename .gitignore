@@ -5,3 +5,7 @@ coverage/
 *.tsbuildinfo
 .env
 .DS_Store
+apps/site/.next/
+apps/site/out/
+apps/site/next-env.d.ts
+.playwright-mcp/

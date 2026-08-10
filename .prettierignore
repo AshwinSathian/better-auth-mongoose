@@ -1,3 +1,5 @@
 dist/
 coverage/
 pnpm-lock.yaml
+apps/site/.next/
+apps/site/out/

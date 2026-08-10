@@ -2,6 +2,8 @@
 
 Tenant-scoped query middleware for [Better Auth](https://www.better-auth.com)'s `organization` plugin, on top of [`better-auth-mongoose`](../better-auth-mongoose). Built _with_, not instead of, the `organization` plugin.
 
+**[better-auth-mongoose.ashwinsathian.com](https://better-auth-mongoose.ashwinsathian.com)** — recipes, a compatibility matrix, and the full case for why this package exists.
+
 ## What this adds
 
 Better Auth's `organization` plugin gives you organizations, members, and an "active organization" on the session. It does not, and shouldn't, at the framework level, automatically scope your own app models (`Project`, `Invoice`, `Document`, whatever you have) to that active organization. Forgetting a `.where({ organizationId })` on one query path is exactly the kind of bug that leaks one tenant's data to another. `tenantScoped()` makes that scoping automatic instead of a convention every service method has to remember.

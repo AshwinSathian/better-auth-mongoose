@@ -6,6 +6,8 @@
 
 A Mongoose-native database adapter for [Better Auth](https://www.better-auth.com): real, extensible Mongoose models for Better Auth's own tables, so `.populate()`, schema validation, and hooks all work normally from your own application code. No raw `mongodb` dependency.
 
+**[better-auth-mongoose.ashwinsathian.com](https://better-auth-mongoose.ashwinsathian.com)** — recipes, a compatibility matrix, and the full case for why this package exists.
+
 ## The problem
 
 Better Auth's official MongoDB adapter (`mongodbAdapter` from `better-auth/adapters/mongodb`) talks to the raw [`mongodb`](https://www.npmjs.com/package/mongodb) driver directly, not Mongoose. If your app already uses Mongoose (the standard ODM for Node + MongoDB, and close to universal in NestJS/Express backends), this creates real, documented problems:
