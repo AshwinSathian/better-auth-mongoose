@@ -32,6 +32,11 @@ jobs:
       matrix:
         node-version: [20, 22]
         better-auth-version: ["^1.4.0", "^1.5.0", "^1.6.0"]
+    env:
+      # Pinned so the binary cache key below stays valid run to run, and so
+      # a silent upstream version bump can't change test behavior underneath
+      # us. Bump deliberately alongside the mongodb-memory-server devDep.
+      MONGOMS_VERSION: 8.2.6
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -43,11 +48,20 @@ jobs:
       - name: Pin better-auth version under test
         run: pnpm --filter better-auth-mongoose add -D better-auth@${{ matrix.better-auth-version }}
       - run: pnpm build
+      - name: Cache mongodb-memory-server binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
+      - name: Pre-download the MongoDB binary once, serially
+        run: pnpm --filter better-auth-mongoose exec node scripts/warm-mongodb-binary.mjs
       - run: pnpm test
 
   example-e2e:
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
+    env:
+      MONGOMS_VERSION: 8.2.6
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -57,4 +71,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter better-auth-mongoose build
+      - name: Cache mongodb-memory-server binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
+      - name: Pre-download the MongoDB binary once, serially
+        run: pnpm --filter better-auth-mongoose exec node scripts/warm-mongodb-binary.mjs
       - run: pnpm --filter nestjs-mongoose-example test:e2e

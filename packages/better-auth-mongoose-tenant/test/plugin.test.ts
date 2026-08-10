@@ -34,8 +34,12 @@ describe("tenantScoped with an explicit connection", () => {
   });
 
   afterAll(async () => {
-    await connection.close();
-    await mongod.stop();
+    // Guard against a beforeAll that threw before either got assigned (e.g.
+    // the in-memory server failed to start) — afterAll still runs
+    // regardless, and calling .close()/.stop() on undefined would mask the
+    // real error.
+    await connection?.close();
+    await mongod?.stop();
   });
 
   it("resolves scoped models from the provided connection instead of the global mongoose connection", async () => {
