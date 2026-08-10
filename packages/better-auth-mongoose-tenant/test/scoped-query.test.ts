@@ -64,4 +64,72 @@ describe("applyTenantScope", () => {
     // than letting a partially-built (unscoped) query reach the database.
     expect(() => Doc2.find({})).toThrow(/no active tenant/i);
   });
+
+  it("scopes deleteOne/deleteMany/updateOne/updateMany so a broad filter can't touch another tenant's rows", async () => {
+    let activeTenantId = "tenant-a";
+    const Task = connection.model(
+      "ScopedTask",
+      new Schema({ title: String, organizationId: String }),
+    );
+    applyTenantScope(Task, "organizationId", () => activeTenantId);
+
+    await Task.collection.insertMany([
+      { title: "A1", organizationId: "tenant-a" },
+      { title: "A2", organizationId: "tenant-a" },
+      { title: "B1", organizationId: "tenant-b" },
+    ]);
+
+    // Cross-tenant assertions below deliberately go through the raw driver
+    // collection, not the scoped Model — the scoped Model is *incapable* of
+    // ever returning tenant-b's data by design, so it can't be used to
+    // check tenant-b's state without itself being silently re-scoped to
+    // tenant-a (exactly the bug this test would otherwise hide).
+
+    // A blanket updateMany({}, ...) must only touch the active tenant's rows.
+    await Task.updateMany({}, { $set: { title: "updated" } });
+    expect(
+      await Task.collection.countDocuments({ organizationId: "tenant-a", title: "updated" }),
+    ).toBe(2);
+    expect((await Task.collection.findOne({ organizationId: "tenant-b" }))?.title).toBe("B1");
+
+    // A blanket deleteOne({}) must not remove another tenant's row.
+    await Task.deleteOne({});
+    expect(await Task.collection.countDocuments({ organizationId: "tenant-a" })).toBe(1);
+    expect(await Task.collection.countDocuments({ organizationId: "tenant-b" })).toBe(1);
+
+    // A blanket deleteMany({}) must never wipe every tenant's data.
+    await Task.deleteMany({});
+    expect(await Task.collection.countDocuments({ organizationId: "tenant-a" })).toBe(0);
+    expect(await Task.collection.countDocuments({ organizationId: "tenant-b" })).toBe(1);
+
+    activeTenantId = "tenant-b";
+    expect(await Task.countDocuments({})).toBe(1);
+  });
+
+  it("scopes findOneAndDelete and findOneAndReplace", async () => {
+    const activeTenantId = "tenant-a";
+    const Note = connection.model(
+      "ScopedNote",
+      new Schema({ body: String, organizationId: String }),
+    );
+    applyTenantScope(Note, "organizationId", () => activeTenantId);
+
+    await Note.collection.insertMany([
+      { body: "mine", organizationId: "tenant-a" },
+      { body: "not mine", organizationId: "tenant-b" },
+    ]);
+
+    // A filter matching another tenant's row must find nothing to replace/delete.
+    expect(await Note.findOneAndReplace({ body: "not mine" }, { body: "hijacked" })).toBeNull();
+    expect(await Note.findOneAndDelete({ body: "not mine" })).toBeNull();
+    expect(await Note.collection.countDocuments({ organizationId: "tenant-b" })).toBe(1);
+
+    const replaced = await Note.findOneAndReplace(
+      { body: "mine" },
+      { body: "replaced" },
+      { returnDocument: "after" },
+    );
+    expect(replaced?.get("body")).toBe("replaced");
+    expect(replaced?.get("organizationId")).toBe("tenant-a");
+  });
 });

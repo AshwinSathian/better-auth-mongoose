@@ -1,5 +1,13 @@
 import type { CustomAdapter } from "@better-auth/core/db/adapter";
-import { buildSchemaDefinition } from "./schema/build-schema";
+import { buildSchemaDefinition, TYPE_MAP } from "./schema/build-schema";
+
+// The generated file only imports `Schema`, so a scalar `type` constructor
+// must be printed as the identifier it's assigned to (e.g. `String`), not
+// `Schema.Types.ObjectId` — derived from TYPE_MAP so this can never drift
+// out of sync with the types buildSchemaDefinition actually produces.
+const TYPE_NAMES = new Map<unknown, string>(
+  Object.values(TYPE_MAP).map((ctor) => [ctor, ctor.name]),
+);
 
 /**
  * Powers the Better Auth CLI's `generate` command. Mongoose has no DDL to
@@ -22,20 +30,16 @@ export function makeCreateSchema(): NonNullable<CustomAdapter["createSchema"]> {
       const definition = buildSchemaDefinition(table.fields);
       const fieldLines = Object.entries(definition).map(([field, def]) => {
         const opts = def as Record<string, unknown>;
-        const type =
-          opts.type === String
-            ? "String"
-            : opts.type === Number
-              ? "Number"
-              : opts.type === Boolean
-                ? "Boolean"
-                : opts.type === Date
-                  ? "Date"
-                  : "Schema.Types.ObjectId";
+        const type = TYPE_NAMES.get(opts.type) ?? "Schema.Types.ObjectId";
         const rest = { ...opts };
         delete rest.type;
         const restEntries = Object.entries(rest)
-          .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+          // A function-typed defaultValue (e.g. Better Auth's own
+          // `createdAt: { defaultValue: () => new Date() }`) must be inlined
+          // as source via .toString() — JSON.stringify(fn) is `undefined`,
+          // which would otherwise silently emit `default: undefined` and
+          // drop the generator entirely from the ejected file.
+          .map(([k, v]) => `${k}: ${typeof v === "function" ? v.toString() : JSON.stringify(v)}`)
           .join(", ");
         return `    ${field}: { type: ${type}${restEntries ? `, ${restEntries}` : ""} },`;
       });

@@ -26,13 +26,16 @@ const modelsCache = new WeakMap<Connection, ModelsCacheEntry>();
 
 function fieldSignature(fields: Record<string, DBFieldAttribute>): string {
   // Both the logical key and fieldName matter: a field can keep its name
-  // but change shape (required, unique, fieldName, reference target)
-  // between migrations, and any of those must still trigger a rebuild.
+  // but change shape (required, unique, index, fieldName, reference target)
+  // between migrations, and any of those must still trigger a rebuild —
+  // `index` in particular must stay in lockstep with `unique` here, since
+  // dropping only *this* flag without a rebuild would leave a stale index
+  // on the real collection that the current schema no longer declares.
   return Object.keys(fields)
     .sort()
     .map((name) => {
       const attr = fields[name]!;
-      return `${name}:${attr.fieldName ?? name}:${attr.type}:${attr.required ?? true}:${attr.unique ?? false}:${attr.references?.model ?? ""}:${attr.references?.field ?? ""}`;
+      return `${name}:${attr.fieldName ?? name}:${attr.type}:${attr.required ?? true}:${attr.unique ?? false}:${attr.index ?? false}:${attr.references?.model ?? ""}:${attr.references?.field ?? ""}`;
     })
     .join(",");
 }

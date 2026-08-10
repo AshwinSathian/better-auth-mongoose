@@ -2,7 +2,7 @@ import { Schema } from "mongoose";
 import type { SchemaDefinition } from "mongoose";
 import type { DBFieldAttribute } from "@better-auth/core/db";
 
-const TYPE_MAP = {
+export const TYPE_MAP = {
   string: String,
   number: Number,
   boolean: Boolean,

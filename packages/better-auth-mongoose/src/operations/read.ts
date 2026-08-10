@@ -57,6 +57,20 @@ function coerceWhereValue(mongooseModel: AnyModel, field: string, value: unknown
   return coerced instanceof Types.ObjectId ? coerced : UNCOERCIBLE;
 }
 
+/**
+ * Builds a case-insensitive exact-match condition via an anchored, fully
+ * escaped regex — MongoDB has no native case-insensitive equality operator.
+ */
+function insensitiveEq(field: string, value: string): Record<string, unknown> {
+  return { [field]: { $regex: `^${escapeForMongoRegex(value)}$`, $options: "i" } };
+}
+
+function isStringOrStringArray(value: unknown): value is string | string[] {
+  return (
+    typeof value === "string" || (Array.isArray(value) && value.every((v) => typeof v === "string"))
+  );
+}
+
 export function whereToMongoFilter(
   mongooseModel: AnyModel,
   model: string,
@@ -86,20 +100,56 @@ export function whereToMongoFilter(
       continue;
     }
 
+    // An id-typed value is never a string by this point (coerceWhereValue
+    // already turned it into a Types.ObjectId), so this also naturally
+    // excludes id/reference fields from case folding, matching Better
+    // Auth's own reference `@better-auth/mongo-adapter` behavior.
+    const insensitive = clause.mode === "insensitive" && isStringOrStringArray(value);
+
     let condition: Record<string, unknown>;
 
     switch (clause.operator) {
       case "eq":
-        condition = { [field]: value };
+        condition = insensitive ? insensitiveEq(field, value as string) : { [field]: value };
+        break;
+      case "ne":
+        condition = insensitive
+          ? { [field]: { $not: insensitiveEq(field, value as string)[field] } }
+          : { [field]: { $ne: value } };
+        break;
+      case "in":
+        condition = insensitive
+          ? { $or: (value as string[]).map((v) => insensitiveEq(field, v)) }
+          : { [field]: { $in: value } };
+        break;
+      case "not_in":
+        condition = insensitive
+          ? { $nor: (value as string[]).map((v) => insensitiveEq(field, v)) }
+          : { [field]: { $nin: value } };
         break;
       case "contains":
-        condition = { [field]: { $regex: escapeForMongoRegex(String(value)) } };
+        condition = {
+          [field]: {
+            $regex: escapeForMongoRegex(String(value)),
+            ...(insensitive ? { $options: "i" } : {}),
+          },
+        };
         break;
       case "starts_with":
-        condition = { [field]: { $regex: `^${escapeForMongoRegex(String(value))}` } };
+        condition = {
+          [field]: {
+            $regex: `^${escapeForMongoRegex(String(value))}`,
+            ...(insensitive ? { $options: "i" } : {}),
+          },
+        };
         break;
       case "ends_with":
-        condition = { [field]: { $regex: `${escapeForMongoRegex(String(value))}$` } };
+        condition = {
+          [field]: {
+            $regex: `${escapeForMongoRegex(String(value))}$`,
+            ...(insensitive ? { $options: "i" } : {}),
+          },
+        };
         break;
       default: {
         const mongoOp = OPERATOR_MAP[clause.operator] ?? "$eq";
@@ -122,13 +172,12 @@ function toProjection(
   getFieldName: GetFieldName,
 ): Record<string, 1> | undefined {
   if (!select || select.length === 0) return undefined;
-  return select.reduce(
-    (acc, logicalField) => {
+  return Object.fromEntries(
+    select.map((logicalField) => {
       let field = getFieldName({ model, field: logicalField });
       if (field === "id") field = "_id";
-      return { ...acc, [field]: 1 };
-    },
-    {} as Record<string, 1>,
+      return [field, 1] as const;
+    }),
   );
 }
 
