@@ -1,6 +1,6 @@
 {
   "name": "better-auth-mongoose",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Mongoose-native database adapter for Better Auth — real, extensible Mongoose models, working .populate(), no raw mongodb dependency.",
   "license": "MIT",
   "author": "Ashwin Sathian",
