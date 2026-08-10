@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]
         better-auth-version: ["^1.4.0", "^1.5.0", "^1.6.0"]
     steps:
       - uses: actions/checkout@v4

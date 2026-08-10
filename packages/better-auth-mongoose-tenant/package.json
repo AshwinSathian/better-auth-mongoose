@@ -31,6 +31,9 @@
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "peerDependencies": {
     "mongoose": "^6.0.0 || ^7.0.0 || ^8.0.0 || ^9.0.0",
     "better-auth": "^1.4.0 || ^1.5.0 || ^1.6.0"
