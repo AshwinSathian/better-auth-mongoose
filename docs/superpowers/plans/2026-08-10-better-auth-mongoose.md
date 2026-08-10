@@ -3026,13 +3026,11 @@ describe("NestJS + Mongoose + better-auth-mongoose example", () => {
   it("signs up a user, creates a post referencing them, and returns it populated", async () => {
     const server = app.getHttpServer();
 
-    const signUp = await request(server)
-      .post("/api/auth/sign-up/email")
-      .send({
-        email: "example@example.com",
-        password: "correct-horse-battery-staple",
-        name: "Example User",
-      });
+    const signUp = await request(server).post("/api/auth/sign-up/email").send({
+      email: "example@example.com",
+      password: "correct-horse-battery-staple",
+      name: "Example User",
+    });
 
     expect(signUp.status).toBe(200);
     const userId: string = signUp.body.user.id;

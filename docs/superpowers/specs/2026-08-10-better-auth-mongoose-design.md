@@ -11,6 +11,7 @@
 Better Auth's official MongoDB adapter talks to the raw `mongodb` driver, not Mongoose. Apps that already use Mongoose (the standard ODM for Node+Mongo, especially NestJS/Express) end up with two parallel connections, duplicate schema definitions, broken `.populate()`, and ID type mismatches (`string` vs `ObjectId`). This is a live, unresolved complaint on Better Auth's GitHub (issue #1492, discussion #9364, issue #6289, discussion #1921) since ~Feb 2025.
 
 This project ships:
+
 1. **`better-auth-mongoose`** — a Mongoose-native Better Auth adapter that registers real, extensible Mongoose models for Better Auth's collections, so `.populate()`, schema validation, and hooks work normally.
 2. **`better-auth-mongoose-tenant`** — an optional plugin adding tenant-scoped query middleware on top, plus (pending investigation) a fix for the Mongo-specific active-organization bug (issue #3695).
 
@@ -96,6 +97,7 @@ The user explicitly requires tested, verified usage examples, not just README sn
 Given the original spec's milestones (M1–M8) span an estimated 3-4+ weeks including third-party-repo actions, this pass is scoped as follows (confirmed with user):
 
 **Executed fully now, autonomously:**
+
 - M1 core adapter (create/update/delete/find/count, default schemas, ID mapping)
 - M2 schema merge/extension support
 - M3 `consumeOne`, joins/populate, transactions with standalone fallback
@@ -106,10 +108,12 @@ Given the original spec's milestones (M1–M8) span an estimated 3-4+ weeks incl
 - GitHub repo creation and push under the user's account
 
 **Investigated/drafted now, NOT submitted without explicit user review:**
+
 - M6: root-causing issue #3695 in `better-auth/better-auth` — real research against the live repo; a fix PR is drafted but held for the user to review/submit, since it's a PR to a third-party repo under their identity.
 - M8: Community Adapters page PR (`docs/content/docs/adapters/community-adapters.mdx` in `better-auth/better-auth`), and outreach replies (Discord, discussion #1921) — drafted, not sent, same reasoning.
 
 **Manual step required from the user (cannot be done autonomously):**
+
 - npm login / first publish (2FA), and adding `NPM_TOKEN` to the GitHub repo's Actions secrets so `release.yml` can auto-publish subsequent versions.
 
 ## 8. Testing strategy (unchanged from original spec, +G8 addition)

@@ -17,10 +17,11 @@ Better Auth ships an official MongoDB adapter, but it talks to the raw `mongodb`
 ### 1.1 What's broken today
 
 Better Auth's `mongodbAdapter()`:
+
 - Requires the raw `mongodb` driver as a dependency, even in projects that only use Mongoose (issue #1492).
 - Writes `user`, `session`, `account`, `verification` documents directly via `MongoClient`, bypassing Mongoose entirely — no schema validation, no hooks, no virtuals.
 - Doesn't register Mongoose models for its own collections, so when a consumer's app defines its own `User` model (to add app-specific fields, or to `.populate()` a `Post.author` reference), the two don't talk to each other cleanly. This produces silent bugs: `.populate()` failing to resolve, `_id` type mismatches (string vs ObjectId) between what Better Auth writes and what Mongoose expects (discussion #9364, issue #6289).
-- Requires developers to manually reach into `mongoose.connection.getClient()` to extract a raw client just to hand it to Better Auth — a workaround, not a solution, that's been the *only* answer offered on the project's own Discord/discussions for over a year.
+- Requires developers to manually reach into `mongoose.connection.getClient()` to extract a raw client just to hand it to Better Auth — a workaround, not a solution, that's been the _only_ answer offered on the project's own Discord/discussions for over a year.
 
 ### 1.2 Who this hurts
 
@@ -29,9 +30,10 @@ Anyone building a NestJS, Express, or Fastify backend on MongoDB who is already 
 ### 1.3 Why nobody's fixed it
 
 Not because it's unwanted — the opposite. It's because:
+
 - It's genuinely fiddly (see §4 below on model registration), more so than a typical CRUD adapter.
-- Adapter authors who *do* use Mongo in these threads reach for the raw-client workaround and move on, because it works well enough for a single side project.
-- It requires understanding both Better Auth's adapter contract *and* Mongoose's schema/model registration internals well enough to make the two coexist without collisions. That's a narrower skill overlap than "know Mongo."
+- Adapter authors who _do_ use Mongo in these threads reach for the raw-client workaround and move on, because it works well enough for a single side project.
+- It requires understanding both Better Auth's adapter contract _and_ Mongoose's schema/model registration internals well enough to make the two coexist without collisions. That's a narrower skill overlap than "know Mongo."
 
 ---
 
@@ -47,7 +49,7 @@ Not because it's unwanted — the opposite. It's because:
 
 ## 3. Non-goals
 
-- Not building a competing auth framework. This is infrastructure *for* Better Auth, not a replacement for any part of it.
+- Not building a competing auth framework. This is infrastructure _for_ Better Auth, not a replacement for any part of it.
 - Not trying to support Mongoose <6 or MongoDB <5.0 initially — match Better Auth's own current baseline, expand later only if there's demand.
 - Not solving multi-database-per-tenant (separate physical DB per tenant) in v1 — v1 tenant-scoping is collection-scoped (shared DB, `tenantId` field), which is the overwhelmingly common pattern and matches what Better Auth's own `organization` plugin assumes.
 - Not building a NestJS wrapper — `@thallesp/nestjs-better-auth` already does that well. This package is framework-agnostic, at the database layer only.
@@ -59,15 +61,18 @@ Not because it's unwanted — the opposite. It's because:
 There are three ways to build this, and picking the right one is 80% of the value of this spec.
 
 ### Option A — Raw-client passthrough with a Mongoose wrapper (rejected)
+
 Just wrap `mongoose.connection.getClient()` automatically so people don't have to do it by hand. This is what every blog post and Stack Overflow answer already recommends. **Rejected** — it doesn't fix the actual bug (schema drift, `.populate()` breakage, no validation). It's a 10-line convenience function, not a package worth publishing, and it doesn't move the needle on the real pain.
 
 ### Option B — Adapter creates and owns its own Mongoose models internally (partial)
+
 The adapter defines its own internal `AuthUserModel`, `AuthSessionModel`, etc., registered on the shared connection, and does all CRUD through those. Consumers never see or touch these models directly.
 
 **Pro:** Simple, self-contained, no coordination needed with consumer code.
 **Con:** Fails G4 — if the consumer wants `user.role` or `user.tenantId`, they can't add it, because the adapter's internal schema is closed. This is the single most common real-world need (nearly every SaaS app adds fields to the user model), so failing it means the package solves the toy case but not the real case.
 
 ### Option C — Adapter accepts consumer-provided (or consumer-extendable) Mongoose schemas, with sane defaults (chosen)
+
 The adapter ships default Mongoose schemas for all Better Auth core models (`user`, `session`, `account`, `verification`) and any enabled plugin models (`organization`, `member`, etc., detected from `options.plugins`). By default it registers and uses these automatically — zero-config for the simple case. But it exposes a `schemas` config option letting the consumer pass their **own** schema per model, which the adapter merges with the required Better Auth fields (auto-injecting any field Better Auth needs that's missing, similar to how the adapter factory already backfills fields per the `schema` docs).
 
 ```ts
@@ -81,6 +86,7 @@ export const auth = betterAuth({
 ```
 
 Internally, the adapter:
+
 1. Takes Better Auth's own generated schema (from `getAuthTables(options)` — the same source `createSchema` in the official Postgres/MySQL adapters reads) as the source of truth for required fields/types.
 2. For each model, checks if the consumer already registered a Mongoose model under that name on the shared connection (`mongoose.models[name]`). If yes, adopts it, and validates it has (or extends it to have) every field Better Auth requires. If no, builds a default schema from Better Auth's field list and registers it.
 3. Exposes the merged/final registered models so consumer code can `import { AuthModels } from 'better-auth-mongoose'` and get typed Mongoose models to run their own queries/populates against, rather than only ever talking to the database through Better Auth's own API.
@@ -172,7 +178,7 @@ interface MongooseAdapterOptions {
 
 export function mongooseAdapter(
   connection: Connection,
-  options?: MongooseAdapterOptions
+  options?: MongooseAdapterOptions,
 ): (betterAuthOptions: BetterAuthOptions) => Adapter;
 ```
 
@@ -235,7 +241,8 @@ Powers the Better Auth CLI's `generate` command. For Mongoose there's no migrati
 
 Better Auth's internal model uses `id: string` everywhere. MongoDB's native ID is `_id: ObjectId`. The official raw-driver adapter handles this with `mapKeysTransformInput: { id: "_id" }` / `mapKeysTransformOutput: { _id: "id" }`, converting `ObjectId` to string on the way out.
 
-This package must do the same mapping, but additionally must ensure that when the consumer's *own* Mongoose schemas reference these IDs (e.g. `Post.author: { type: ObjectId, ref: 'user' }`), the types line up. Concretely:
+This package must do the same mapping, but additionally must ensure that when the consumer's _own_ Mongoose schemas reference these IDs (e.g. `Post.author: { type: ObjectId, ref: 'user' }`), the types line up. Concretely:
+
 - Store IDs as native `ObjectId` in the database (not stringified) — this is what makes `.populate()` work, since Mongoose's populate mechanism expects `ObjectId` refs.
 - Convert to `string` only in `transformOutput`, at the boundary where Better Auth's own core reads the value — not in the database itself.
 - This is exactly the bug reported in issue #6289 and discussion #9364: the raw-client adapter's ID handling and a hand-written Mongoose `ref` schema disagree on string-vs-ObjectId, and nobody currently documents the fix. Getting this right and documenting it clearly is itself a meaningful contribution independent of the rest of the package.
@@ -255,9 +262,11 @@ Mongoose supports sessions/transactions only on replica sets or sharded clusters
 Built on top of, not instead of, Better Auth's own `organization` plugin. Two components:
 
 ### 7.1 Bug fixes for documented Mongo-specific breakage
+
 Issue #3695 ("Setting Active Organization not working with MongoDB") is open and unresolved as of this research. Root-causing and fixing this (likely: the org plugin's "is member of org" check assumes a join shape the raw Mongo adapter doesn't structurally guarantee) is both independently valuable and the single best trust-building contribution to make directly to the `better-auth/better-auth` repo itself — see §8.
 
 ### 7.2 Tenant-scoped query helpers
+
 ```ts
 import { tenantScoped } from "better-auth-mongoose-tenant";
 
@@ -273,6 +282,7 @@ export const auth = betterAuth({
   ],
 });
 ```
+
 This uses Mongoose's `pre('find')` / `pre('findOne')` / `pre('save')` middleware hooks to automatically inject the active tenant's scoping field, rather than requiring every service method in the consumer's app to remember to add `.where({ organizationId })` by hand — which is exactly the class of bug ("tenant data must be scoped by design, not by convention") already in your own stated product philosophy.
 
 ---
@@ -282,22 +292,28 @@ This uses Mongoose's `pre('find')` / `pre('findOne')` / `pre('save')` middleware
 This has to be sequenced carefully. Don't lead with "please endorse my package" — lead with fixes to problems they already know they have.
 
 ### Phase 0 — Build in the open, reference the evidence
+
 Open the GitHub repo with a README that explicitly links issue #1492, discussion #9364, issue #6289, and discussion #1921 as the motivating problem — this is honest, and it signals to any Better Auth maintainer stumbling on it that you did the homework rather than building a vanity package.
 
 ### Phase 1 — Ship the adapter, get it correctness-verified
+
 Use `@better-auth/test-utils`'s official `testAdapter` / `createTestSuite` harness (documented in their own adapter guide) to prove full contract parity. Passing their own test suite, published in the README with a badge, is the single highest-credibility signal you can offer before anyone reads a line of your code.
 
 ### Phase 2 — Fix the standing Mongo bug upstream, not just in your package
+
 Submit a PR to `better-auth/better-auth` itself fixing issue #3695 (active-org on Mongo). This is a contribution to their core repo, not your package — it's the move that gets you recognized by maintainers as a credible contributor before you ever ask for anything.
 
 ### Phase 3 — Submit the community adapter PR
+
 Per their own documented process: "if you want to share your adapter with the community, please open a pull request to add it to this list" — a PR against `docs/content/docs/adapters/community-adapters.mdx`. This is a low-friction, well-trodden path; every one of the 18 existing community adapters got in exactly this way.
 
 ### Phase 4 — Discord + Discussion #1921 close-the-loop
+
 Reply directly on discussion #1921 (the original "Mongoose Adapter" thread) linking the shipped package. That thread already has an audience of people who explicitly asked for this — it's pre-qualified distribution, not cold outreach.
 
 ### Phase 5 — Stretch: official adapter promotion
-Only pursue this after real usage numbers exist (npm downloads, GitHub stars, issues from real users). Frame it as "here's a year of adoption data" rather than asking upfront. Given MongoDB is one of only five *officially* maintained adapters already, and Mongoose is the dominant ODM for it, there's a real, evidence-backed case to make later — but it has to be earned with usage data, not pitched cold.
+
+Only pursue this after real usage numbers exist (npm downloads, GitHub stars, issues from real users). Frame it as "here's a year of adoption data" rather than asking upfront. Given MongoDB is one of only five _officially_ maintained adapters already, and Mongoose is the dominant ODM for it, there's a real, evidence-backed case to make later — but it has to be earned with usage data, not pitched cold.
 
 ---
 
@@ -319,16 +335,16 @@ Only pursue this after real usage numbers exist (npm downloads, GitHub stars, is
 
 ## 11. Milestones and rough effort
 
-| Phase | Scope | Est. effort |
-|---|---|---|
-| M1 | Core adapter (create/update/delete/find/count), default schemas, ID mapping | 1–1.5 weeks |
-| M2 | Schema merge/extension support (the differentiator), consumer model adoption | 3–4 days |
-| M3 | `consumeOne`, joins/populate, transactions with graceful standalone fallback | 3–4 days |
-| M4 | Full `@better-auth/test-utils` parity suite + populate integration test | 3–4 days |
-| M5 | Docs, README, worked example repo (NestJS + Mongoose + this adapter) | 2–3 days |
-| M6 | Tenant plugin: org-plugin Mongo bug investigation + fix upstream | 1–2 weeks (investigation-heavy) |
-| M7 | Tenant plugin: scoped-query middleware package | 3–4 days |
-| M8 | Community adapter PR, Discord/discussion outreach | ongoing, low-effort |
+| Phase | Scope                                                                        | Est. effort                     |
+| ----- | ---------------------------------------------------------------------------- | ------------------------------- |
+| M1    | Core adapter (create/update/delete/find/count), default schemas, ID mapping  | 1–1.5 weeks                     |
+| M2    | Schema merge/extension support (the differentiator), consumer model adoption | 3–4 days                        |
+| M3    | `consumeOne`, joins/populate, transactions with graceful standalone fallback | 3–4 days                        |
+| M4    | Full `@better-auth/test-utils` parity suite + populate integration test      | 3–4 days                        |
+| M5    | Docs, README, worked example repo (NestJS + Mongoose + this adapter)         | 2–3 days                        |
+| M6    | Tenant plugin: org-plugin Mongo bug investigation + fix upstream             | 1–2 weeks (investigation-heavy) |
+| M7    | Tenant plugin: scoped-query middleware package                               | 3–4 days                        |
+| M8    | Community adapter PR, Discord/discussion outreach                            | ongoing, low-effort             |
 
 Total to a genuinely solid v1 (M1–M5): roughly **3–4 weeks of focused evenings/weekends.** M6 is the long pole and the highest-credibility item — it's worth doing even if delayed, since it's the piece most likely to get a maintainer's attention directly.
 
