@@ -85,11 +85,11 @@ If `getActiveTenantId()` returns `undefined` — no active tenant in the current
 
 ## Why method-wrapping instead of Mongoose middleware
 
-`applyTenantScope` wraps the Model's own read/write methods (`find`, `findOne`, `findOneAndUpdate`, `findOneAndDelete`, `findOneAndReplace`, `countDocuments`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `save`) directly, rather than using `schema.pre(...)` hooks. Mongoose bakes document-level middleware (like `save`) into a Model at `mongoose.model()` compile time — hooks registered afterward are silently never called. Since scoped models are looked up by name _after_ they're already compiled (by your own app code, or by `better-auth-mongoose`), wrapping the compiled Model's own methods is what actually works regardless of registration order.
+`applyTenantScope` wraps the Model's own read/write methods (`find`, `findOne`, `findById`, `findOneAndUpdate`, `findByIdAndUpdate`, `findOneAndDelete`, `findByIdAndDelete`, `findOneAndReplace`, `countDocuments`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `save`) directly, rather than using `schema.pre(...)` hooks. Mongoose bakes document-level middleware (like `save`) into a Model at `mongoose.model()` compile time — hooks registered afterward are silently never called. Since scoped models are looked up by name _after_ they're already compiled (by your own app code, or by `better-auth-mongoose`), wrapping the compiled Model's own methods is what actually works regardless of registration order.
 
-## The Mongo-specific active-organization bug — already fixed upstream
+## The Mongo-specific active-organization bug: already fixed upstream
 
-The original motivation for a `better-auth-mongoose-tenant` bug-fix component was [better-auth/better-auth#3695](https://github.com/better-auth/better-auth/issues/3695) ("Setting Active Organization not working with MongoDB"). Investigating it directly: **it's already fixed upstream**, resolved by [PR #3757](https://github.com/better-auth/better-auth/pull/3757) in August 2025, well before the `better-auth` versions this package targets. See [`docs/M6-active-org-investigation.md`](../../docs/M6-active-org-investigation.md) for the full writeup, including a direct reproduction attempt against this adapter (no error). No patch is needed or included here.
+The original motivation for a `better-auth-mongoose-tenant` bug-fix component was [better-auth/better-auth#3695](https://github.com/better-auth/better-auth/issues/3695) ("Setting Active Organization not working with MongoDB"). Investigating it directly: **it's already fixed upstream**, resolved by [PR #3757](https://github.com/better-auth/better-auth/pull/3757) in August 2025, well before the `better-auth` versions this package targets. A direct reproduction attempt against this adapter turned up no error. No patch is needed or included here.
 
 ## License
 
