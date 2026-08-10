@@ -9,12 +9,13 @@ export function tenantScoped(options: TenantScopedOptions): BetterAuthPlugin {
   return {
     id: "mongoose-tenant-scoped",
     async init() {
+      const registry = options.connection ?? mongoose;
       for (const modelName of options.scopedModels) {
-        const model = mongoose.models[modelName];
+        const model = registry.models[modelName];
         if (!model) {
           throw new Error(
-            `better-auth-mongoose-tenant: model "${modelName}" is not registered on the default ` +
-              `mongoose connection yet. Register it (or pass its connection explicitly — see README) ` +
+            `better-auth-mongoose-tenant: model "${modelName}" is not registered on the ` +
+              `${options.connection ? "provided" : "default"} connection yet. Register it ` +
               `before calling tenantScoped().`,
           );
         }
