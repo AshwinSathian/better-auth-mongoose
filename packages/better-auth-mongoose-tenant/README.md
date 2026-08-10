@@ -1,0 +1,80 @@
+# better-auth-mongoose-tenant
+
+Tenant-scoped query middleware for [Better Auth](https://www.better-auth.com)'s `organization` plugin, on top of [`better-auth-mongoose`](../better-auth-mongoose). Built _with_, not instead of, the `organization` plugin.
+
+## What this adds
+
+Better Auth's `organization` plugin gives you organizations, members, and an "active organization" on the session. It does not — and shouldn't, at the framework level — automatically scope your own app models (`Project`, `Invoice`, `Document`, whatever you have) to that active organization. Forgetting a `.where({ organizationId })` on one query path is exactly the kind of bug that leaks one tenant's data to another. `tenantScoped()` makes that scoping automatic instead of a convention every service method has to remember.
+
+```ts
+import { betterAuth } from "better-auth";
+import { organization } from "better-auth/plugins";
+import { mongooseAdapter } from "better-auth-mongoose";
+import { tenantScoped } from "better-auth-mongoose-tenant";
+import mongoose from "mongoose";
+
+await mongoose.connect(process.env.MONGO_URI!);
+
+// Your own app models, defined however you already define them.
+const Project = mongoose.model(
+  "Project",
+  new mongoose.Schema({
+    name: String,
+    organizationId: String,
+  }),
+);
+
+export const auth = betterAuth({
+  database: mongooseAdapter(mongoose.connection),
+  plugins: [
+    organization(),
+    tenantScoped({
+      scopedModels: ["Project"], // model names, already registered on the default mongoose connection
+      getActiveTenantId: () => getCurrentSession()?.activeOrganizationId,
+    }),
+  ],
+});
+```
+
+Once wired up, every `Project.find()`, `.findOne()`, `.findOneAndUpdate()`, and `.countDocuments()` call automatically gets `{ organizationId: <active tenant> }` merged into its filter, and every new document gets `organizationId` stamped on save if it doesn't already have one. There's no `.where()` to forget.
+
+## API
+
+### `tenantScoped(options)`
+
+A Better Auth plugin (pass it in the `plugins` array).
+
+```ts
+interface TenantScopedOptions {
+  /** Model names, already registered on the default mongoose connection, to scope. */
+  scopedModels: string[];
+  /** Field holding the tenant id on each scoped model. Default: "organizationId". */
+  tenantField?: string;
+  /** Returns the active tenant id for the current request/session context. */
+  getActiveTenantId: () => string | undefined;
+}
+```
+
+`getActiveTenantId` is called synchronously on every scoped query — plug in whatever gives you the current request's `activeOrganizationId` (e.g. `AsyncLocalStorage`, a request-scoped container, or Better Auth's own session context, depending on your framework).
+
+**Ordering matters:** `scopedModels` are looked up via `mongoose.models[modelName]` when the plugin's `init()` runs, so each scoped model must already be registered (via `mongoose.model(...)`, or via `better-auth-mongoose`'s own model registration for auth's own tables) before `betterAuth({ plugins: [tenantScoped(...)] })` is constructed.
+
+### `applyTenantScope(model, tenantField, getActiveTenantId)`
+
+The lower-level function `tenantScoped()` calls internally, exported directly if you want to scope a model without going through the plugin system.
+
+## Why a throw, not a silent fallback
+
+If `getActiveTenantId()` returns `undefined` — no active tenant in the current context — a scoped query throws immediately, synchronously, before touching the database, rather than running unscoped (which would return every tenant's data) or returning an empty result (which would look like "no data" instead of "misconfigured request", masking real bugs). Fail loud and early beats fail silent and wide.
+
+## Why method-wrapping instead of Mongoose middleware
+
+`applyTenantScope` wraps `find`/`findOne`/`findOneAndUpdate`/`countDocuments`/`save` on the Model object directly, rather than using `schema.pre(...)` hooks. Mongoose bakes document-level middleware (like `save`) into a Model at `mongoose.model()` compile time — hooks registered afterward are silently never called. Since scoped models are looked up by name _after_ they're already compiled (by your own app code, or by `better-auth-mongoose`), wrapping the compiled Model's own methods is what actually works regardless of registration order.
+
+## The Mongo-specific active-organization bug — already fixed upstream
+
+The original motivation for a `better-auth-mongoose-tenant` bug-fix component was [better-auth/better-auth#3695](https://github.com/better-auth/better-auth/issues/3695) ("Setting Active Organization not working with MongoDB"). Investigating it directly: **it's already fixed upstream**, resolved by [PR #3757](https://github.com/better-auth/better-auth/pull/3757) in August 2025, well before the `better-auth` versions this package targets. See [`docs/M6-active-org-investigation.md`](../../docs/M6-active-org-investigation.md) for the full writeup, including a direct reproduction attempt against this adapter (no error). No patch is needed or included here.
+
+## License
+
+MIT © Ashwin Sathian
