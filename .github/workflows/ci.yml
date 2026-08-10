@@ -44,3 +44,17 @@ jobs:
         run: pnpm --filter better-auth-mongoose add -D better-auth@${{ matrix.better-auth-version }}
       - run: pnpm build
       - run: pnpm test
+
+  example-e2e:
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter better-auth-mongoose build
+      - run: pnpm --filter nestjs-mongoose-example test:e2e

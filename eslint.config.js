@@ -22,4 +22,14 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
+  {
+    // NestJS's DI resolves constructor parameters via reflect-metadata,
+    // which needs a real runtime class reference — `import type` erases the
+    // import entirely, silently breaking injection. consistent-type-imports
+    // would "fix" exactly the pattern NestJS requires, so it's off here.
+    files: ["examples/nestjs-mongoose/**/*.ts"],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": "off",
+    },
+  },
 );
