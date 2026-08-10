@@ -46,18 +46,34 @@ A Better Auth plugin (pass it in the `plugins` array).
 
 ```ts
 interface TenantScopedOptions {
-  /** Model names, already registered on the default mongoose connection, to scope. */
+  /** Model names, already registered, to scope. */
   scopedModels: string[];
   /** Field holding the tenant id on each scoped model. Default: "organizationId". */
   tenantField?: string;
   /** Returns the active tenant id for the current request/session context. */
   getActiveTenantId: () => string | undefined;
+  /** Connection scoped models are registered on. Default: the global mongoose connection. */
+  connection?: Connection;
 }
 ```
 
-`getActiveTenantId` is called synchronously on every scoped query — plug in whatever gives you the current request's `activeOrganizationId` (e.g. `AsyncLocalStorage`, a request-scoped container, or Better Auth's own session context, depending on your framework).
+`getActiveTenantId` is called synchronously on every scoped query. Plug in whatever gives you the current request's `activeOrganizationId` (e.g. `AsyncLocalStorage`, a request-scoped container, or Better Auth's own session context, depending on your framework).
 
-**Ordering matters:** `scopedModels` are looked up via `mongoose.models[modelName]` when the plugin's `init()` runs, so each scoped model must already be registered (via `mongoose.model(...)`, or via `better-auth-mongoose`'s own model registration for auth's own tables) before `betterAuth({ plugins: [tenantScoped(...)] })` is constructed.
+**Ordering matters:** `scopedModels` are looked up on the connection's model registry when the plugin's `init()` runs, so each scoped model must already be registered on that connection before `betterAuth({ plugins: [tenantScoped(...)] })` is constructed. By default that's the global `mongoose` connection (via `mongoose.model(...)`, or via `better-auth-mongoose`'s own registration for auth's own tables). If your app uses `mongoose.createConnection()` instead, pass that connection explicitly:
+
+```ts
+const connection = mongoose.createConnection(process.env.MONGO_URI!);
+const Project = connection.model(
+  "Project",
+  new mongoose.Schema({ name: String, organizationId: String }),
+);
+
+tenantScoped({
+  connection,
+  scopedModels: ["Project"],
+  getActiveTenantId: () => getCurrentSession()?.activeOrganizationId,
+});
+```
 
 ### `applyTenantScope(model, tenantField, getActiveTenantId)`
 
