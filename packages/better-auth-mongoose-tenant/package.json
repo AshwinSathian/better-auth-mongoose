@@ -1,6 +1,6 @@
 {
   "name": "better-auth-mongoose-tenant",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tenant-scoped query middleware for Better Auth's organization plugin on Mongoose.",
   "license": "MIT",
   "author": "Ashwin Sathian",
