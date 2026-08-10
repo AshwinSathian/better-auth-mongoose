@@ -23,7 +23,11 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: "https://registry.npmjs.org"
-      - run: npm install -g npm@latest
+      # Pinned to the npm 11.x line, not "latest": npm 12 removed the legacy
+      # --git-checks passthrough that pnpm 9's `pnpm publish` still relies on
+      # when it delegates to npm under the hood, turning what npm 11 treats
+      # as a deprecation warning into a hard EUNKNOWNCONFIG failure.
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Create release PR or publish
