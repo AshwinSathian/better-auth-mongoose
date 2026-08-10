@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "description": "Worked example: NestJS + Mongoose + better-auth-mongoose, with an extended user schema and a Post model that .populate()s its author.",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
