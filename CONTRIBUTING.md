@@ -10,7 +10,7 @@ cd better-auth-mongoose
 pnpm install
 ```
 
-Requires Node.js 18+ and [pnpm](https://pnpm.io). Node version is pinned in `.nvmrc` (`nvm use`).
+Requires Node.js 20.19+ (the minimum supported by Mongoose 9 / the `mongodb` driver it depends on) and [pnpm](https://pnpm.io). Node version is pinned in `.nvmrc` (`nvm use`).
 
 ## Running tests
 
@@ -40,7 +40,7 @@ Plain, descriptive commit messages (`feat: ...`, `fix: ...`, `docs: ...`, `chore
 
 ## What CI checks
 
-Every PR runs lint, typecheck, the full test suite across Node 18/20/22 and the last three `better-auth` minor versions, and the NestJS example's end-to-end test. All of it needs to be green before merge.
+Every PR runs lint, typecheck, the full test suite across Node 20/22 and the last three `better-auth` minor versions, and the NestJS example's end-to-end test. All of it needs to be green before merge.
 
 ## Questions
 
