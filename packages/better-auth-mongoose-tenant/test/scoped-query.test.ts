@@ -132,4 +132,39 @@ describe("applyTenantScope", () => {
     expect(replaced?.get("body")).toBe("replaced");
     expect(replaced?.get("organizationId")).toBe("tenant-a");
   });
+
+  it("scopes findById, findByIdAndUpdate, and findByIdAndDelete by tenant", async () => {
+    const activeTenantId = "tenant-a";
+    const Widget = connection.model(
+      "ScopedWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => activeTenantId);
+
+    const mine = await Widget.collection.insertOne({ name: "mine", organizationId: "tenant-a" });
+    const theirs = await Widget.collection.insertOne({
+      name: "theirs",
+      organizationId: "tenant-b",
+    });
+
+    // A caller-supplied id belonging to another tenant must come back empty,
+    // not the other tenant's document.
+    expect((await Widget.findById(mine.insertedId))?.get("name")).toBe("mine");
+    expect(await Widget.findById(theirs.insertedId)).toBeNull();
+
+    expect(
+      (await Widget.findByIdAndUpdate(mine.insertedId, { name: "renamed" }, { new: true }))?.get(
+        "name",
+      ),
+    ).toBe("renamed");
+    expect(await Widget.findByIdAndUpdate(theirs.insertedId, { name: "hijacked" })).toBeNull();
+    expect((await Widget.collection.findOne({ _id: theirs.insertedId }))?.name).toBe("theirs");
+
+    expect(await Widget.findByIdAndDelete(theirs.insertedId)).toBeNull();
+    expect(await Widget.collection.countDocuments({ _id: theirs.insertedId })).toBe(1);
+
+    const deletedMine = await Widget.findByIdAndDelete(mine.insertedId);
+    expect(deletedMine?.get("name")).toBe("renamed");
+    expect(await Widget.collection.countDocuments({ _id: mine.insertedId })).toBe(0);
+  });
 });

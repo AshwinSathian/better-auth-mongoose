@@ -13,14 +13,15 @@ import type { AnyModel } from "./types";
  * regardless of when the model was compiled.
  *
  * Covers every Model method whose first argument is a plain filter/conditions
- * object — the full mutation surface, not just reads, since a "scoped" model
+ * object, the full mutation surface, not just reads, since a "scoped" model
  * that still let `deleteMany`/`updateMany` run unscoped would leak exactly
- * the cross-tenant blast radius this package exists to prevent. `findById`
- * and its variants are deliberately excluded: an id already identifies at
- * most one document, so there's no filter shape here to merge a tenant
- * clause into. `findOneAndReplace` is also excluded from this generic list —
- * it needs its own wrapper below, since scoping only its filter would leave
- * the *replacement* document free to set (or omit) the tenant field itself.
+ * the cross-tenant blast radius this package exists to prevent. `findById`,
+ * `findByIdAndUpdate`, and `findByIdAndDelete` get their own wrappers below
+ * that delegate to the now-scoped find-family methods, converting the id
+ * into `{ _id: id }` the same way Mongoose does internally.
+ * `findOneAndReplace` also needs its own wrapper: scoping only its filter
+ * would leave the *replacement* document free to set (or omit) the tenant
+ * field itself.
  */
 const SCOPED_METHODS = [
   "find",
@@ -67,6 +68,22 @@ export function applyTenantScope(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       original(scoped(filter as any), ...rest);
   }
+
+  // Model.findById is implemented by Mongoose itself as `this.findOne({ _id:
+  // id })`, resolved dynamically on whatever `this` is at the call site.
+  // Because of that, it already picks up the reassigned findOne from the
+  // loop above without any wrapping here, at least as checked against
+  // mongoose 9. That's an accident of how Mongoose wires its own methods
+  // together, not a documented contract of theirs, so it's not something
+  // this package should depend on holding across the whole 6-9 peer range.
+  // These three are wrapped explicitly instead, delegating to the now-scoped
+  // find-family methods, so the guarantee stands on its own.
+  mutableModel.findById = (id?: unknown, ...rest: unknown[]) =>
+    mutableModel.findOne!({ _id: id }, ...rest);
+  mutableModel.findByIdAndUpdate = (id?: unknown, update?: unknown, ...rest: unknown[]) =>
+    mutableModel.findOneAndUpdate!({ _id: id }, update, ...rest);
+  mutableModel.findByIdAndDelete = (id?: unknown, ...rest: unknown[]) =>
+    mutableModel.findOneAndDelete!({ _id: id }, ...rest);
 
   // A full-document replace bypasses `scoped()`'s filter merge entirely for
   // its result — without this, a replacement doc could omit the tenant
