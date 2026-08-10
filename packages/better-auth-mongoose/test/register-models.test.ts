@@ -54,4 +54,29 @@ describe("registerModels", () => {
     expect(models.get("user")!.schema.path("tenantId")).toBeDefined();
     expect(models.get("user")!.schema.path("email")).toBeDefined();
   });
+
+  it("rebuilds the model when only a field's index flag changes", () => {
+    const conn4 = connection.useDb("index-signature-test");
+    const withoutIndex: BetterAuthDBSchema = {
+      user: {
+        modelName: "user",
+        fields: { bio: { type: "string", required: false, fieldName: "bio" } },
+      },
+    };
+    const withIndex: BetterAuthDBSchema = {
+      user: {
+        modelName: "user",
+        fields: { bio: { type: "string", required: false, fieldName: "bio", index: true } },
+      },
+    };
+
+    registerModels(conn4, withoutIndex, {});
+    const rebuilt = registerModels(conn4, withIndex, {});
+
+    const indexedPaths = rebuilt
+      .get("user")!
+      .schema.indexes()
+      .map(([fields]) => Object.keys(fields as Record<string, unknown>)[0]);
+    expect(indexedPaths).toContain("bio");
+  });
 });

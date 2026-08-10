@@ -3,6 +3,7 @@ import {
   normalTestSuite,
   authFlowTestSuite,
   transactionsTestSuite,
+  caseInsensitiveTestSuite,
 } from "@better-auth/test-utils/adapter";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
@@ -36,6 +37,7 @@ const { execute } = await testAdapter({
       },
     }),
     authFlowTestSuite(),
+    caseInsensitiveTestSuite(),
     transactionsTestSuite({
       disableTests: {
         // This specific test fails only through test-utils' own

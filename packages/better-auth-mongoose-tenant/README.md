@@ -36,7 +36,9 @@ export const auth = betterAuth({
 });
 ```
 
-Once wired up, every `Project.find()`, `.findOne()`, `.findOneAndUpdate()`, and `.countDocuments()` call automatically gets `{ organizationId: <active tenant> }` merged into its filter, and every new document gets `organizationId` stamped on save if it doesn't already have one. There's no `.where()` to forget.
+Once wired up, every read and write on `Project` — `.find()`, `.findOne()`, `.findOneAndUpdate()`, `.findOneAndDelete()`, `.findOneAndReplace()`, `.countDocuments()`, `.updateOne()`, `.updateMany()`, `.deleteOne()`, and `.deleteMany()` — automatically gets `{ organizationId: <active tenant> }` merged into its filter, so a caller-supplied `organizationId` in the filter can never override it. New documents get `organizationId` stamped on save if they don't already have one, and `.findOneAndReplace()`'s replacement document gets the same forced stamp (otherwise a full-document replace could silently drop the tenant field, or set a different one). There's no `.where()` to forget.
+
+`.findById()` and its variants (`findByIdAndUpdate`, `findByIdAndDelete`) are intentionally **not** scoped — an id already identifies at most one document, so there's no filter to merge a tenant clause into; looking a document up by id across tenants is a modeling decision left to you.
 
 ## API
 
@@ -69,7 +71,7 @@ If `getActiveTenantId()` returns `undefined` — no active tenant in the current
 
 ## Why method-wrapping instead of Mongoose middleware
 
-`applyTenantScope` wraps `find`/`findOne`/`findOneAndUpdate`/`countDocuments`/`save` on the Model object directly, rather than using `schema.pre(...)` hooks. Mongoose bakes document-level middleware (like `save`) into a Model at `mongoose.model()` compile time — hooks registered afterward are silently never called. Since scoped models are looked up by name _after_ they're already compiled (by your own app code, or by `better-auth-mongoose`), wrapping the compiled Model's own methods is what actually works regardless of registration order.
+`applyTenantScope` wraps the Model's own read/write methods (`find`, `findOne`, `findOneAndUpdate`, `findOneAndDelete`, `findOneAndReplace`, `countDocuments`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `save`) directly, rather than using `schema.pre(...)` hooks. Mongoose bakes document-level middleware (like `save`) into a Model at `mongoose.model()` compile time — hooks registered afterward are silently never called. Since scoped models are looked up by name _after_ they're already compiled (by your own app code, or by `better-auth-mongoose`), wrapping the compiled Model's own methods is what actually works regardless of registration order.
 
 ## The Mongo-specific active-organization bug — already fixed upstream
 

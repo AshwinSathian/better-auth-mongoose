@@ -1,5 +1,14 @@
 import type { Connection } from "mongoose";
 
+// Replica-set-vs-standalone is a deployment-time property of a connection,
+// not something that changes mid-process — cached per connection (like
+// registerModels' own modelsCache) so the real probe below, a full extra
+// session/transaction round trip, doesn't run again on every single
+// transaction() call for the connection's lifetime. Only a *resolved* probe
+// is cached; while the connection isn't ready yet (no connection.db),
+// nothing is cached, so a later call still gets a real answer.
+const supportsSessionsCache = new WeakMap<Connection, Promise<boolean>>();
+
 /**
  * Detects whether the connection can run sessions/transactions. Mongoose
  * only supports these on a replica set or sharded cluster, not a standalone
@@ -13,13 +22,26 @@ import type { Connection } from "mongoose";
  * which MongoDB itself doesn't permit inside a transaction) so the probe
  * exercises exactly the kind of operation this adapter actually performs.
  */
-export async function supportsSessions(connection: Connection): Promise<boolean> {
-  if (!connection.db) return false;
+export function supportsSessions(connection: Connection): Promise<boolean> {
+  const db = connection.db;
+  if (!db) return Promise.resolve(false);
 
+  let cached = supportsSessionsCache.get(connection);
+  if (!cached) {
+    cached = probeSessionSupport(connection, db);
+    supportsSessionsCache.set(connection, cached);
+  }
+  return cached;
+}
+
+async function probeSessionSupport(
+  connection: Connection,
+  db: NonNullable<Connection["db"]>,
+): Promise<boolean> {
   const session = await connection.startSession();
   try {
     session.startTransaction();
-    await connection.db.collection("__better_auth_mongoose_probe__").findOne({}, { session });
+    await db.collection("__better_auth_mongoose_probe__").findOne({}, { session });
     await session.abortTransaction();
     return true;
   } catch {
