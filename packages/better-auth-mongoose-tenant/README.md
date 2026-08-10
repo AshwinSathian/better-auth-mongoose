@@ -4,7 +4,7 @@ Tenant-scoped query middleware for [Better Auth](https://www.better-auth.com)'s 
 
 ## What this adds
 
-Better Auth's `organization` plugin gives you organizations, members, and an "active organization" on the session. It does not — and shouldn't, at the framework level — automatically scope your own app models (`Project`, `Invoice`, `Document`, whatever you have) to that active organization. Forgetting a `.where({ organizationId })` on one query path is exactly the kind of bug that leaks one tenant's data to another. `tenantScoped()` makes that scoping automatic instead of a convention every service method has to remember.
+Better Auth's `organization` plugin gives you organizations, members, and an "active organization" on the session. It does not, and shouldn't, at the framework level, automatically scope your own app models (`Project`, `Invoice`, `Document`, whatever you have) to that active organization. Forgetting a `.where({ organizationId })` on one query path is exactly the kind of bug that leaks one tenant's data to another. `tenantScoped()` makes that scoping automatic instead of a convention every service method has to remember.
 
 ```ts
 import { betterAuth } from "better-auth";
@@ -36,7 +36,7 @@ export const auth = betterAuth({
 });
 ```
 
-Once wired up, every read and write on `Project` gets automatically scoped: `.find()`, `.findOne()`, `.findById()`, `.findOneAndUpdate()`, `.findByIdAndUpdate()`, `.findOneAndDelete()`, `.findByIdAndDelete()`, `.findOneAndReplace()`, `.countDocuments()`, `.updateOne()`, `.updateMany()`, `.deleteOne()`, and `.deleteMany()` all get `{ organizationId: <active tenant> }` merged into their filter, so a caller-supplied `organizationId` can never override it. The id-based methods work the same way Mongoose implements them internally: as a lookup by `{ _id: id }` under the hood, so looking up another tenant's id returns `null`, the same as an id that doesn't exist at all. New documents get `organizationId` stamped on save if they don't already have one, and `.findOneAndReplace()`'s replacement document gets the same forced stamp (otherwise a full-document replace could silently drop the tenant field, or set a different one). There's no `.where()` to forget, and no method name that quietly slips past the net.
+Once wired up, every read and write on `Project` gets automatically scoped: `.find()`, `.findOne()`, `.findById()`, `.findOneAndUpdate()`, `.findByIdAndUpdate()`, `.findOneAndDelete()`, `.findByIdAndDelete()`, `.findOneAndReplace()`, `.replaceOne()`, `.countDocuments()`, `.distinct()`, `.exists()`, `.updateOne()`, `.updateMany()`, and `.deleteOne()`/`.deleteMany()` all get `{ organizationId: <active tenant> }` merged into their filter, so a caller-supplied `organizationId` can never override it, and neither can chaining `.where('organizationId').equals(...)` onto the result afterward. The id-based methods work the same way Mongoose implements them internally: as a lookup by `{ _id: id }` under the hood, so looking up another tenant's id returns `null`, the same as an id that doesn't exist at all. New documents get `organizationId` stamped whether they're created via `new Project().save()`, `Project.create()`, `Project.insertOne()`, `Project.insertMany()`, or `Project.bulkSave()`, and any full-document replace (`.findOneAndReplace()`, `.replaceOne()`) gets the same forced stamp on the replacement, so it can't silently drop the tenant field or move a row to another tenant. An update body can't reassign a row to a different tenant via `$set`, or strip the field via `$unset`, either. There's no `.where()` to forget, and no method name that quietly slips past the net.
 
 ## API
 
@@ -81,11 +81,26 @@ The lower-level function `tenantScoped()` calls internally, exported directly if
 
 ## Why a throw, not a silent fallback
 
-If `getActiveTenantId()` returns `undefined` — no active tenant in the current context — a scoped query throws immediately, synchronously, before touching the database, rather than running unscoped (which would return every tenant's data) or returning an empty result (which would look like "no data" instead of "misconfigured request", masking real bugs). Fail loud and early beats fail silent and wide.
+If `getActiveTenantId()` returns `undefined` (no active tenant in the current context), a scoped query throws immediately, synchronously, before touching the database, rather than running unscoped (which would return every tenant's data) or returning an empty result (which would look like "no data" instead of "misconfigured request", masking real bugs). Fail loud and early beats fail silent and wide.
 
-## Why method-wrapping instead of Mongoose middleware
+## Two enforcement layers, not one
 
-`applyTenantScope` wraps the Model's own read/write methods (`find`, `findOne`, `findById`, `findOneAndUpdate`, `findByIdAndUpdate`, `findOneAndDelete`, `findByIdAndDelete`, `findOneAndReplace`, `countDocuments`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `save`) directly, rather than using `schema.pre(...)` hooks. Mongoose bakes document-level middleware (like `save`) into a Model at `mongoose.model()` compile time — hooks registered afterward are silently never called. Since scoped models are looked up by name _after_ they're already compiled (by your own app code, or by `better-auth-mongoose`), wrapping the compiled Model's own methods is what actually works regardless of registration order.
+`applyTenantScope` works in two independent layers, because neither one alone covers everything:
+
+1. **Static-method wrapping.** `find`, `findOne`, `findById`, `findOneAndUpdate`, `findByIdAndUpdate`, `findOneAndDelete`, `findByIdAndDelete`, `findOneAndReplace`, `countDocuments`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `insertMany`, `bulkSave`, and both `save`/`$save` on the document prototype are reassigned directly on the compiled Model, rather than via `schema.pre(...)` hooks. Mongoose bakes document-level middleware like `save` into a Model at `mongoose.model()` compile time, so hooks registered afterward are silently never called, and scoped models here are always looked up by name after they're already compiled. This layer throws immediately and synchronously on a missing active tenant, before a query is even built.
+2. **Exec-time enforcement.** Some methods don't go through any of the above at all: `Model.where()` builds a `Query` directly instead of delegating to a wrapped static, `Model.replaceOne()` (the standalone static, distinct from `findOneAndReplace`) is never wrapped, and chaining `.where('organizationId').equals(...)` after an already-scoped call can overwrite the filter the first layer injected before the query executes. `applyTenantScope` also patches `Query.prototype.exec` once, module-wide, to force the tenant field onto every query built against a scoped model at the last possible moment. This covers `.where()` chains, `replaceOne`, `distinct`, `exists`, and closes off post-hoc overrides on everything else, regardless of how the query was constructed. The patch is a no-op for every other model in the process; it only acts on queries whose model carries this package's scope marker.
+
+Both layers run for anything the first one wraps: redundant there by design, and load-bearing for everything the first one can't reach.
+
+## What's not scoped, and why
+
+A few Model methods are deliberately left unscoped rather than half-solved:
+
+- **`estimatedDocumentCount()`** has no filter concept at all. It reads fast collection-level metadata, not a filtered query, so it can't be scoped by tenant. Calling it on a scoped model throws rather than silently returning every tenant's count; use `countDocuments({})` instead, which is scoped.
+- **`bulkWrite()`** takes heterogeneous, driver-shaped raw operations. `bulkSave()` (which is scoped) calls `bulkWrite()` internally, so `bulkWrite` itself is left unwrapped rather than guarded. A guard here would also break `bulkSave`'s own delegation. If you need bulk writes against a scoped model directly, scope each operation's filter/document yourself.
+- **`aggregate()`** is pipeline-based, not filter-based. Scoping it generically would mean prepending a `$match` stage, which changes pipeline semantics in ways too specific to your own pipeline to do safely without knowing what it does.
+- **`watch()`** is a change-stream subscription, not a query.
+- **`populate()`** and **`hydrate()`** operate on already-fetched data or plain objects; neither makes its own database round trip, so there's nothing to scope.
 
 ## The Mongo-specific active-organization bug: already fixed upstream
 

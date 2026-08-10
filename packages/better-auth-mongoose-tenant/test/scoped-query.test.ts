@@ -14,7 +14,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Guard against a beforeAll that threw before either got assigned (e.g.
-  // the in-memory server failed to start) — afterAll still runs regardless,
+  // the in-memory server failed to start). afterAll still runs regardless,
   // and calling .close()/.stop() on undefined would mask the real error.
   await connection?.close();
   await mongod?.stop();
@@ -63,7 +63,7 @@ describe("applyTenantScope", () => {
     );
     applyTenantScope(Doc2, "organizationId", () => undefined);
 
-    // Fails fast, synchronously, before a query is even constructed — safer
+    // Fails fast, synchronously, before a query is even constructed, safer
     // than letting a partially-built (unscoped) query reach the database.
     expect(() => Doc2.find({})).toThrow(/no active tenant/i);
   });
@@ -83,7 +83,7 @@ describe("applyTenantScope", () => {
     ]);
 
     // Cross-tenant assertions below deliberately go through the raw driver
-    // collection, not the scoped Model — the scoped Model is *incapable* of
+    // collection, not the scoped Model. The scoped Model is *incapable* of
     // ever returning tenant-b's data by design, so it can't be used to
     // check tenant-b's state without itself being silently re-scoped to
     // tenant-a (exactly the bug this test would otherwise hide).
@@ -171,6 +171,69 @@ describe("applyTenantScope", () => {
     expect(await Widget.collection.countDocuments({ _id: mine.insertedId })).toBe(0);
   });
 
+  it("stamps the tenant id on documents created via Model.create() and Model.insertOne()", async () => {
+    const activeTenantId = "tenant-a";
+    const Item = connection.model(
+      "ScopedCreateItem",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Item, "organizationId", () => activeTenantId);
+
+    // Model.create() and Model.insertOne() call doc.$save(), a property
+    // separate from doc.save() and aliased to the pre-wrap original at
+    // Mongoose's own module-load time. This is the case that would have
+    // silently skipped stamping if only .save() were wrapped.
+    const created = await Item.create({ name: "via create" });
+    expect(created.get("organizationId")).toBe("tenant-a");
+
+    const insertedOne = await Item.insertOne({ name: "via insertOne" });
+    expect(insertedOne.get("organizationId")).toBe("tenant-a");
+
+    const [a, b] = await Item.create([{ name: "array 1" }, { name: "array 2" }]);
+    expect(a?.get("organizationId")).toBe("tenant-a");
+    expect(b?.get("organizationId")).toBe("tenant-a");
+  });
+
+  it("stamps the tenant id on documents inserted via Model.insertMany(), plain objects and Documents alike", async () => {
+    const activeTenantId = "tenant-a";
+    const Item = connection.model(
+      "ScopedInsertManyItem",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Item, "organizationId", () => activeTenantId);
+
+    const [plain1, plain2] = await Item.insertMany([{ name: "plain 1" }, { name: "plain 2" }]);
+    expect(plain1?.get("organizationId")).toBe("tenant-a");
+    expect(plain2?.get("organizationId")).toBe("tenant-a");
+
+    // A single doc (not wrapped in an array) is also accepted by Mongoose's
+    // own insertMany.
+    const [single] = await Item.insertMany({ name: "single" });
+    expect(single?.get("organizationId")).toBe("tenant-a");
+
+    // An entry that's already a constructed Document, with the tenant field
+    // explicitly set to something else, must not be overridden. Matches
+    // save()'s existing "only fill in if missing" behavior.
+    const preSet = new Item({ name: "pre-set", organizationId: "tenant-b" });
+    const [inserted] = await Item.insertMany([preSet]);
+    expect(inserted?.get("organizationId")).toBe("tenant-b");
+  });
+
+  it("stamps the tenant id on documents saved via Model.bulkSave()", async () => {
+    const activeTenantId = "tenant-a";
+    const Item = connection.model(
+      "ScopedBulkSaveItem",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Item, "organizationId", () => activeTenantId);
+
+    const docs = [new Item({ name: "bulk 1" }), new Item({ name: "bulk 2" })];
+    await Item.bulkSave(docs);
+
+    const rows = await Item.collection.find({}).sort({ name: 1 }).toArray();
+    expect(rows.map((r) => r.organizationId)).toEqual(["tenant-a", "tenant-a"]);
+  });
+
   it("does not re-wrap an already-scoped model on a second applyTenantScope() call", async () => {
     let calls = 0;
     const getActiveTenantId = () => {
@@ -183,14 +246,18 @@ describe("applyTenantScope", () => {
     );
 
     applyTenantScope(Ledger, "organizationId", getActiveTenantId);
-    applyTenantScope(Ledger, "organizationId", getActiveTenantId);
-
     await Ledger.collection.insertOne({ amount: 1, organizationId: "tenant-a" });
 
     calls = 0;
     await Ledger.find({}).lean().exec();
-    // A single wrap calls getActiveTenantId once per query; an undetected
-    // second wrap would call it twice for the same find().
-    expect(calls).toBe(1);
+    const callsWithOneApply = calls;
+
+    // A second, redundant applyTenantScope() call must be a no-op. If it
+    // silently stacked another layer of wrapping, the exact same find()
+    // would call getActiveTenantId more times than it did above.
+    applyTenantScope(Ledger, "organizationId", getActiveTenantId);
+    calls = 0;
+    await Ledger.find({}).lean().exec();
+    expect(calls).toBe(callsWithOneApply);
   });
 });

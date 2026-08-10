@@ -3,7 +3,7 @@ import type { Connection, Model } from "mongoose";
 /**
  * Mongoose's `Model<T>` requires a document type parameter, but this package
  * scopes arbitrary consumer-defined models with no shared document shape.
- * The one sanctioned `any` in the public type surface — every other file
+ * The one sanctioned `any` in the public type surface. Every other file
  * imports this alias instead of writing `Model<any>` directly.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
