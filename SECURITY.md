@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest published minor version of each package (`better-auth-mongoose`, `better-auth-mongoose-tenant`) receives security fixes. There is no long-term-support branch for older versions — please stay current.
+Only the latest published minor version of each package (`better-auth-mongoose`, `better-auth-mongoose-tenant`) receives security fixes. There is no long-term-support branch for older versions, so please stay current.
 
 ## Reporting a vulnerability
 
@@ -16,7 +16,7 @@ Please include:
 - A minimal reproduction (a failing test is ideal)
 - The potential impact as you understand it
 
-You should expect an initial response within a few days. This is a solo-maintained open-source project, not a funded security team — please be patient, and thank you for reporting responsibly.
+You should expect an initial response within a few days. This is a solo-maintained open-source project, not a funded security team. Please be patient, and thank you for reporting responsibly.
 
 ## Scope
 

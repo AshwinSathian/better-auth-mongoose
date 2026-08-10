@@ -1,9 +1,14 @@
 {
   "name": "better-auth-mongoose-monorepo",
   "private": true,
+  "description": "Monorepo for better-auth-mongoose: a Mongoose-native database adapter for Better Auth, plus a tenant-scoping plugin.",
   "type": "module",
   "license": "MIT",
   "author": "Ashwin Sathian",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AshwinSathian/better-auth-mongoose.git"
+  },
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.19.0"
