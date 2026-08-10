@@ -36,9 +36,7 @@ export const auth = betterAuth({
 });
 ```
 
-Once wired up, every read and write on `Project` — `.find()`, `.findOne()`, `.findOneAndUpdate()`, `.findOneAndDelete()`, `.findOneAndReplace()`, `.countDocuments()`, `.updateOne()`, `.updateMany()`, `.deleteOne()`, and `.deleteMany()` — automatically gets `{ organizationId: <active tenant> }` merged into its filter, so a caller-supplied `organizationId` in the filter can never override it. New documents get `organizationId` stamped on save if they don't already have one, and `.findOneAndReplace()`'s replacement document gets the same forced stamp (otherwise a full-document replace could silently drop the tenant field, or set a different one). There's no `.where()` to forget.
-
-`.findById()` and its variants (`findByIdAndUpdate`, `findByIdAndDelete`) are intentionally **not** scoped — an id already identifies at most one document, so there's no filter to merge a tenant clause into; looking a document up by id across tenants is a modeling decision left to you.
+Once wired up, every read and write on `Project` gets automatically scoped: `.find()`, `.findOne()`, `.findById()`, `.findOneAndUpdate()`, `.findByIdAndUpdate()`, `.findOneAndDelete()`, `.findByIdAndDelete()`, `.findOneAndReplace()`, `.countDocuments()`, `.updateOne()`, `.updateMany()`, `.deleteOne()`, and `.deleteMany()` all get `{ organizationId: <active tenant> }` merged into their filter, so a caller-supplied `organizationId` can never override it. The id-based methods work the same way Mongoose implements them internally: as a lookup by `{ _id: id }` under the hood, so looking up another tenant's id returns `null`, the same as an id that doesn't exist at all. New documents get `organizationId` stamped on save if they don't already have one, and `.findOneAndReplace()`'s replacement document gets the same forced stamp (otherwise a full-document replace could silently drop the tenant field, or set a different one). There's no `.where()` to forget, and no method name that quietly slips past the net.
 
 ## API
 
