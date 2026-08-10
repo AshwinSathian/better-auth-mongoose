@@ -35,11 +35,20 @@ const SCOPED_METHODS = [
   "deleteMany",
 ] as const satisfies readonly (keyof AnyModel)[];
 
+// Marks a model once applyTenantScope() has wrapped it, so a second call on
+// the same model (hot reload, multiple betterAuth() instances in a test
+// file) is a no-op instead of silently stacking another layer of wrapping.
+const TENANT_SCOPED_MARKER = Symbol("better-auth-mongoose-tenant:scoped");
+
 export function applyTenantScope(
   model: AnyModel,
   tenantField: string,
   getActiveTenantId: () => string | undefined,
 ): void {
+  if ((model as unknown as Record<symbol, boolean>)[TENANT_SCOPED_MARKER]) {
+    return;
+  }
+
   function requireTenantId(): string {
     const id = getActiveTenantId();
     if (!id) {
@@ -114,4 +123,10 @@ export function applyTenantScope(
     }
     return originalSave.apply(this, args as never);
   };
+
+  Object.defineProperty(model, TENANT_SCOPED_MARKER, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+  });
 }
