@@ -167,4 +167,27 @@ describe("applyTenantScope", () => {
     expect(deletedMine?.get("name")).toBe("renamed");
     expect(await Widget.collection.countDocuments({ _id: mine.insertedId })).toBe(0);
   });
+
+  it("does not re-wrap an already-scoped model on a second applyTenantScope() call", async () => {
+    let calls = 0;
+    const getActiveTenantId = () => {
+      calls++;
+      return "tenant-a";
+    };
+    const Ledger = connection.model(
+      "ScopedLedger",
+      new Schema({ amount: Number, organizationId: String }),
+    );
+
+    applyTenantScope(Ledger, "organizationId", getActiveTenantId);
+    applyTenantScope(Ledger, "organizationId", getActiveTenantId);
+
+    await Ledger.collection.insertOne({ amount: 1, organizationId: "tenant-a" });
+
+    calls = 0;
+    await Ledger.find({}).lean().exec();
+    // A single wrap calls getActiveTenantId once per query; an undetected
+    // second wrap would call it twice for the same find().
+    expect(calls).toBe(1);
+  });
 });
