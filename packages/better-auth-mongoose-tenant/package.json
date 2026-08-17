@@ -39,7 +39,7 @@
     "better-auth": "^1.4.0 || ^1.5.0 || ^1.6.0"
   },
   "devDependencies": {
-    "mongoose": "^9.9.1",
+    "mongoose": "^9.9.2",
     "better-auth": "^1.6.26",
     "mongodb-memory-server": "^11.2.0",
     "vitest": "^4.1.10",
