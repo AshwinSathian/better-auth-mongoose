@@ -14,7 +14,7 @@
     "test:e2e": "vitest run test/app.e2e-spec.ts"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.28",
+    "@nestjs/common": "^11.1.29",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-express": "^11.1.28",
     "@thallesp/nestjs-better-auth": "^2.7.0",
