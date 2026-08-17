@@ -73,6 +73,11 @@ This isn't a claim. It's a real, CI-run test:
 
 Both run on every push via [CI](./.github/workflows/ci.yml). `better-auth-mongoose` also passes the official [`@better-auth/test-utils`](https://www.npmjs.com/package/@better-auth/test-utils) adapter contract suite.
 
+## Plays well with
+
+- **[`@thallesp/nestjs-better-auth`](https://github.com/thallesp/nestjs-better-auth)** — not just claimed compatible: [`examples/nestjs-mongoose`](./examples/nestjs-mongoose) is built directly on it and runs in CI on every push.
+- **[`better-auth-ui`](https://github.com/better-auth-ui/better-auth-ui)** — Better Auth's adapter is purely a database-layer concern; every client hook and endpoint better-auth-ui calls is identical regardless of which adapter is behind it, so this works with no adapter-specific wiring.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md). Please also read [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) and, for vulnerability reports, [SECURITY.md](./SECURITY.md).

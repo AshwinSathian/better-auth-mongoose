@@ -133,6 +133,11 @@ Better Auth 1.4+ supports adapter-level joins (`experimental: { joins: true }` i
 
 [`examples/nestjs-mongoose`](../../examples/nestjs-mongoose) is a complete, runnable NestJS app using this adapter with an extended `user` schema and a `Post` model that `.populate()`s its author. It's exercised in CI, not just described in a README.
 
+## Plays well with
+
+- **[`@thallesp/nestjs-better-auth`](https://github.com/thallesp/nestjs-better-auth)** — the NestJS example above is built directly on it and runs in CI on every push, not just claimed compatible.
+- **[`better-auth-ui`](https://github.com/better-auth-ui/better-auth-ui)** — the adapter only implements Better Auth's database layer. Every client hook and endpoint better-auth-ui calls is identical regardless of which adapter is behind it, so it works with no adapter-specific wiring.
+
 ## Contributing
 
 See the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
