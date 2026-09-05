@@ -49,7 +49,7 @@ jobs:
         run: pnpm --filter better-auth-mongoose add -D better-auth@${{ matrix.better-auth-version }}
       - run: pnpm build
       - name: Cache mongodb-memory-server binary
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/mongodb-binaries
           key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
@@ -85,7 +85,7 @@ jobs:
       - name: Swap in the matrix Mongoose version for the tenant package
         run: pnpm --filter better-auth-mongoose-tenant add -D mongoose@${{ matrix.mongoose-version }}
       - name: Cache mongodb-memory-server binary
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/mongodb-binaries
           key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
@@ -108,7 +108,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter better-auth-mongoose build
       - name: Cache mongodb-memory-server binary
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/mongodb-binaries
           key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
