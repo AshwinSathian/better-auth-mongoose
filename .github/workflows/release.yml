@@ -31,20 +31,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Create release PR or publish
-        # changesets/action has no tagged v1.x release past v1.9.0 — the
-        # floating "v1" this used to read is a mutable branch
-        # (refs/heads/v1), not a tag, so pinning to a tag like every other
-        # action here isn't available for this exact major. Pinned instead
-        # to that branch's tip as of this change (2026-09-05); re-resolve
-        # via `git ls-remote https://github.com/changesets/action.git
-        # refs/heads/v1` before bumping, since there's no version tag to
-        # diff against. changesets/action v2 exists but is a deliberate,
-        # separate upgrade this pin doesn't make — its release-workflow
-        # inputs/outputs haven't been reviewed for breaking changes here.
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d
+        # v2 renamed the `publish`/`version` inputs used on v1 to
+        # `publish-script`/`version-script` (confirmed against v2.1.1's own
+        # action.yml) — updated below to match, not just the pinned SHA.
+        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
-          publish: pnpm release
-          version: pnpm version-packages
+          publish-script: pnpm release
+          version-script: pnpm version-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
