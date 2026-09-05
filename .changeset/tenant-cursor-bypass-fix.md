@@ -1,0 +1,5 @@
+---
+"better-auth-mongoose-tenant": patch
+---
+
+Close a tenant-isolation bypass found in an adversarial review: `Query.prototype.cursor()` (and `for await (const doc of query)`, whose `Symbol.asyncIterator` implementation is `return this.cursor()`) never calls `Query.prototype.exec()` at all — `QueryCursor` reads the query's raw filter directly against the driver instead. `applyTenantScope`'s exec-time enforcement patched only `exec()`, so `Model.find({}).where('organizationId').equals(<other tenant>).cursor()` streamed another tenant's documents in full, silently, even though the exact same attack via `await`/`.exec()` was already correctly blocked. `Query.prototype.cursor` is now patched the same way `exec()` is, so every streaming/async-iteration path against a scoped model is enforced at the same last-possible moment, regardless of how the query was built. A missing active tenant id now surfaces through the cursor's normal error path (mirroring Mongoose's own cast-error convention) rather than throwing synchronously out of `.cursor()`, which has no promise to reject.

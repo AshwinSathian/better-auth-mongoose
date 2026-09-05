@@ -72,6 +72,104 @@ describe("exec-time enforcement", () => {
     expect((attempted[0] as any).organizationId).toBe("tenant-a");
   });
 
+  // Query.prototype.cursor() (and `for await` on a Query directly, which
+  // delegates to it via Symbol.asyncIterator) never calls Query.prototype
+  // .exec() at all — QueryCursor reads the query's raw _conditions straight
+  // against the driver, bypassing the round trip exec() normally makes.
+  // Without its own patch, this streaming path fell through the exec-time
+  // net entirely and reintroduced exactly the .where()-after-scoping attack
+  // the previous test already defeats for the awaited/exec() path.
+  it("defeats the .where(tenantField).equals(<other tenant>) attack via .cursor()", async () => {
+    const activeTenantId = "tenant-a";
+    const Widget = connection.model(
+      "ExecScopedCursorWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => activeTenantId);
+
+    await Widget.collection.insertMany([
+      { name: "mine", organizationId: "tenant-a" },
+      { name: "theirs", organizationId: "tenant-b" },
+    ]);
+
+    const streamed: string[] = [];
+    const cursor = Widget.find({}).where("organizationId").equals("tenant-b").cursor();
+    for await (const doc of cursor) {
+      streamed.push((doc as unknown as { name: string }).name);
+    }
+
+    expect(streamed).toEqual(["mine"]);
+  });
+
+  it("defeats the same attack via `for await` directly on a Query (Symbol.asyncIterator)", async () => {
+    const activeTenantId = "tenant-a";
+    const Widget = connection.model(
+      "ExecScopedAsyncIteratorWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => activeTenantId);
+
+    await Widget.collection.insertMany([
+      { name: "mine", organizationId: "tenant-a" },
+      { name: "theirs", organizationId: "tenant-b" },
+    ]);
+
+    const streamed: string[] = [];
+    for await (const doc of Widget.find({}).where("organizationId").equals("tenant-b")) {
+      streamed.push((doc as unknown as { name: string }).name);
+    }
+
+    expect(streamed).toEqual(["mine"]);
+  });
+
+  it("still streams correctly-scoped results via a plain .cursor() with no attack", async () => {
+    const activeTenantId = "tenant-a";
+    const Widget = connection.model(
+      "ExecScopedPlainCursorWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => activeTenantId);
+
+    await Widget.collection.insertMany([
+      { name: "mine", organizationId: "tenant-a" },
+      { name: "theirs", organizationId: "tenant-b" },
+    ]);
+
+    const streamed: string[] = [];
+    for await (const doc of Widget.find({}).cursor()) {
+      streamed.push((doc as unknown as { name: string }).name);
+    }
+
+    expect(streamed).toEqual(["mine"]);
+  });
+
+  it("surfaces a missing active tenant id through the cursor's error path, not a synchronous throw", async () => {
+    const Widget = connection.model(
+      "ExecScopedCursorNoTenantWidget",
+      new Schema({ name: String, organizationId: String }),
+    );
+    applyTenantScope(Widget, "organizationId", () => undefined);
+
+    // Widget.find({}) is wrapped as a static and would throw synchronously
+    // right there (before a Query even exists), which isn't what this test
+    // is after. Widget.where({}) builds a Query directly without going
+    // through that wrapper, so enforcement only happens once .cursor() runs
+    // — exactly the path being tested here.
+    //
+    // Mirrors Mongoose's own cast-error convention: cursor() always returns
+    // a cursor object rather than throwing synchronously, even when
+    // enforcement can't proceed. The error must still surface once consumed.
+    const cursor = Widget.where({}).cursor();
+    await expect(
+      (async () => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _doc of cursor) {
+          // draining is enough to observe the rejection
+        }
+      })(),
+    ).rejects.toThrow(/no active tenant id available/i);
+  });
+
   it("scopes the standalone Model.replaceOne(), which isn't wrapped as a static at all", async () => {
     const activeTenantId = "tenant-a";
     const Widget = connection.model(

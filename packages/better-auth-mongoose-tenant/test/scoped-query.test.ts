@@ -156,9 +156,13 @@ describe("applyTenantScope", () => {
     expect(await Widget.findById(theirs.insertedId)).toBeNull();
 
     expect(
-      (await Widget.findByIdAndUpdate(mine.insertedId, { name: "renamed" }, { new: true }))?.get(
-        "name",
-      ),
+      (
+        await Widget.findByIdAndUpdate(
+          mine.insertedId,
+          { name: "renamed" },
+          { returnDocument: "after" },
+        )
+      )?.get("name"),
     ).toBe("renamed");
     expect(await Widget.findByIdAndUpdate(theirs.insertedId, { name: "hijacked" })).toBeNull();
     expect((await Widget.collection.findOne({ _id: theirs.insertedId }))?.name).toBe("theirs");

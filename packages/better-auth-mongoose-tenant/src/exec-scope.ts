@@ -153,4 +153,39 @@ export function installExecEnforcement(): void {
     }
     return originalExec.apply(this, args);
   };
+
+  // Query.prototype.cursor() (and `for await (const doc of query)`, whose
+  // Symbol.asyncIterator implementation is `return this.cursor()`) never
+  // calls Query.prototype.exec() at all: QueryCursor reads the query's raw
+  // `_conditions` directly against `model.collection.find(...)`, bypassing
+  // the driver-level round trip exec() normally makes. Without this second
+  // patch, `Model.find({}).where(tenantField).equals(otherTenantId).cursor()`
+  // streamed another tenant's documents in full, silently — the exact
+  // .where()-after-scoping bypass the exec() patch above exists to close,
+  // just through a different Mongoose entry point that never reaches it.
+  const originalCursor = QueryProto.cursor;
+  QueryProto.cursor = function (this: AnyQuery, ...args: unknown[]) {
+    const config = getTenantScopeConfig(this.model as AnyModel);
+    if (config) {
+      try {
+        enforce(this, config, this.op as string | undefined);
+      } catch (err) {
+        // Mirrors Mongoose's own convention here: a cast error inside the
+        // real cursor() is never thrown synchronously either, it's attached
+        // to the returned QueryCursor via _markError() so it surfaces
+        // through the stream/async-iterator's normal error path instead.
+        // cursor() has no Promise to reject, so a synchronous throw here
+        // would break every caller relying on always getting a cursor
+        // object back, unlike a rejected `await`. This is safe even though
+        // the cursor below still gets constructed against whatever filter
+        // enforcement rejected: QueryCursor's own consumption path checks
+        // `_error` before ever advancing the underlying raw driver cursor
+        // (confirmed against mongoose 9's own source), the same way
+        // Mongoose's own cast-error branch relies on, so no document is
+        // ever actually pulled once _markError has been called.
+        return originalCursor.apply(this, args)._markError(err);
+      }
+    }
+    return originalCursor.apply(this, args);
+  };
 }
