@@ -1,5 +1,15 @@
 # better-auth-mongoose-tenant
 
+## 0.2.0
+
+### Minor Changes
+
+- 33cf042: Add `tenantMatchStage(model)` and `getScopedTenantId(model)`, a supported way to scope your own `Model.aggregate()` pipelines by tenant. `aggregate()` was already documented as deliberately unscoped — a pipeline's semantics are too specific to guess at, so blindly prepending a `$match` stage would be actively wrong for some pipelines — but that left nothing stopping a consumer from writing `Model.aggregate([...])` with no tenant filter at all and getting every tenant's data back, silently. `tenantMatchStage(Model)` builds the correct `{ $match: { <tenantField>: <activeTenantId> } }` stage to place wherever your pipeline needs it, and `getScopedTenantId(Model)` returns just the raw id for anything more bespoke (a `$lookup`'s `let`, an `$expr`). Both throw the same way every other enforcement path in this package does if the model isn't tenant-scoped or no active tenant id is available, rather than handing back a filter that silently matches nothing.
+
+### Patch Changes
+
+- fbe424f: Close a tenant-isolation bypass found in an adversarial review: `Query.prototype.cursor()` (and `for await (const doc of query)`, whose `Symbol.asyncIterator` implementation is `return this.cursor()`) never calls `Query.prototype.exec()` at all — `QueryCursor` reads the query's raw filter directly against the driver instead. `applyTenantScope`'s exec-time enforcement patched only `exec()`, so `Model.find({}).where('organizationId').equals(<other tenant>).cursor()` streamed another tenant's documents in full, silently, even though the exact same attack via `await`/`.exec()` was already correctly blocked. `Query.prototype.cursor` is now patched the same way `exec()` is, so every streaming/async-iteration path against a scoped model is enforced at the same last-possible moment, regardless of how the query was built. A missing active tenant id now surfaces through the cursor's normal error path (mirroring Mongoose's own cast-error convention) rather than throwing synchronously out of `.cursor()`, which has no promise to reject.
+
 ## 0.1.4
 
 ### Patch Changes
