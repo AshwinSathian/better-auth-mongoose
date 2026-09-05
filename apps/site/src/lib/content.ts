@@ -116,6 +116,19 @@ export const auth = betterAuth({
   ],
 });`,
   },
+  {
+    id: "tenant-aggregate",
+    title: "Scope an aggregate() pipeline by tenant",
+    description:
+      "applyTenantScope() deliberately never touches aggregate() — a pipeline's semantics are too specific to guess at. tenantMatchStage() builds the correct $match stage yourself, wherever your pipeline needs it.",
+    lang: "ts",
+    code: `import { tenantMatchStage } from "better-auth-mongoose-tenant";
+
+const byStatus = await Project.aggregate([
+  tenantMatchStage(Project), // { $match: { organizationId: <active tenant> } }
+  { $group: { _id: "$status", count: { $sum: 1 } } },
+]);`,
+  },
 ];
 
 export interface FaqItem {
@@ -147,7 +160,7 @@ export const faqItems: FaqItem[] = [
   {
     question: "What's the current stability?",
     answer:
-      "Both packages are at 0.1.x. The adapter passes the official @better-auth/test-utils adapter contract suite and the CI-run populate() test in the repo; the tenant plugin has its own CI suite covering the enforcement layers described in its README. Still young enough that you should read the changelog before bumping minor versions.",
+      "Still 0.x: the adapter is at 0.1.x and the tenant plugin at 0.2.x. The adapter passes the official @better-auth/test-utils adapter contract suite and the CI-run populate() test in the repo; the tenant plugin has its own CI suite covering the enforcement layers described in its README. Still young enough that you should read the changelog before bumping minor versions.",
   },
   {
     question: "What does it cost, and what's the license?",

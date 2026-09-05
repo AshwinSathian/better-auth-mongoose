@@ -40,7 +40,7 @@ Plain, descriptive commit messages (`feat: ...`, `fix: ...`, `docs: ...`, `chore
 
 ## What CI checks
 
-Every PR runs lint, typecheck, the full test suite across Node 20/22 and the last three `better-auth` minor versions, and the NestJS example's end-to-end test. All of it needs to be green before merge.
+Every PR runs lint, typecheck, the full test suite across Node 20/22 and every `better-auth` minor version in this package's supported peer range, and the NestJS example's end-to-end test. All of it needs to be green before merge.
 
 ## Questions
 
