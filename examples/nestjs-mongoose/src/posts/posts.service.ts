@@ -16,6 +16,11 @@ export class PostsService implements OnModuleInit {
   }
 
   findById(id: string) {
+    // A caller-supplied :id that isn't valid ObjectId hex would otherwise
+    // reach Mongoose's own cast and throw a CastError the controller doesn't
+    // catch, surfacing as an unhandled 500 instead of the 404 a malformed
+    // (or simply guessed-wrong) id should produce.
+    if (!mongoose.isValidObjectId(id)) return null;
     return this.postModel.findById(id).populate("author").lean().exec();
   }
 }

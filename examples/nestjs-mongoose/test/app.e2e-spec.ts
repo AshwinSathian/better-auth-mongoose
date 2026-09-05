@@ -52,4 +52,12 @@ describe("NestJS + Mongoose + better-auth-mongoose example", () => {
     expect(getPost.body.title).toBe("Hello from the example app");
     expect(getPost.body.author.email).toBe("example@example.com");
   });
+
+  it("returns 404 for a malformed post id instead of an unhandled cast error", async () => {
+    const server = app.getHttpServer();
+
+    const getPost = await request(server).get("/posts/not-a-valid-object-id");
+
+    expect(getPost.status).toBe(404);
+  });
 });
