@@ -118,14 +118,29 @@ export function whereToMongoFilter(
           : { [field]: { $ne: value } };
         break;
       case "in":
-        condition = insensitive
-          ? { $or: (value as string[]).map((v) => insensitiveEq(field, v)) }
-          : { [field]: { $in: value } };
+        // An empty allow-list must always match nothing. `{ [field]: { $in:
+        // [] } }` has that well-defined native meaning on every supported
+        // MongoDB version; `{ $or: [] }` (what mapping each element through
+        // insensitiveEq would otherwise produce for a 0-length list) does
+        // not; empirically, it matches *every* document instead — the
+        // opposite of an empty in-list's intended meaning, and a real
+        // cross-tenant-style data exposure if a caller's allow-list ever
+        // narrows to empty at runtime. Bypassing the insensitive branch
+        // entirely for the empty case sidesteps that regardless of mode.
+        condition =
+          insensitive && (value as string[]).length > 0
+            ? { $or: (value as string[]).map((v) => insensitiveEq(field, v)) }
+            : { [field]: { $in: value } };
         break;
       case "not_in":
-        condition = insensitive
-          ? { $nor: (value as string[]).map((v) => insensitiveEq(field, v)) }
-          : { [field]: { $nin: value } };
+        // Mirrors the `in` case above: an empty exclusion list must always
+        // match everything, which `{ [field]: { $nin: [] } }` guarantees
+        // natively, without relying on `{ $nor: [] }`'s equivalent-but-
+        // version-fragile empty-array behavior.
+        condition =
+          insensitive && (value as string[]).length > 0
+            ? { $nor: (value as string[]).map((v) => insensitiveEq(field, v)) }
+            : { [field]: { $nin: value } };
         break;
       case "contains":
         condition = {
