@@ -68,7 +68,9 @@ const DOCUMENTED_EXCLUSIONS: Record<string, string> = {
   // calls the true, unguarded implementation internally via a private
   // stand-in `this`, so its own delegation isn't affected by the guard.
   bulkWrite: "heterogeneous raw ops; throws when called directly, same as estimatedDocumentCount()",
-  // Pipeline-based, not filter-based.
+  // Pipeline-based, not filter-based. tenantMatchStage()/getScopedTenantId()
+  // (src/aggregate.ts) are the supported opt-in way to scope your own
+  // pipeline against it; Model.aggregate() itself stays unscoped.
   aggregate:
     "pipeline-based; scoping means prepending $match, too pipeline-specific to do generically",
   // Server-side map-reduce, deprecated by MongoDB itself in favor of the

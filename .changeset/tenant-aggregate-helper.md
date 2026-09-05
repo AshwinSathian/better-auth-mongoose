@@ -1,0 +1,5 @@
+---
+"better-auth-mongoose-tenant": minor
+---
+
+Add `tenantMatchStage(model)` and `getScopedTenantId(model)`, a supported way to scope your own `Model.aggregate()` pipelines by tenant. `aggregate()` was already documented as deliberately unscoped — a pipeline's semantics are too specific to guess at, so blindly prepending a `$match` stage would be actively wrong for some pipelines — but that left nothing stopping a consumer from writing `Model.aggregate([...])` with no tenant filter at all and getting every tenant's data back, silently. `tenantMatchStage(Model)` builds the correct `{ $match: { <tenantField>: <activeTenantId> } }` stage to place wherever your pipeline needs it, and `getScopedTenantId(Model)` returns just the raw id for anything more bespoke (a `$lookup`'s `let`, an `$expr`). Both throw the same way every other enforcement path in this package does if the model isn't tenant-scoped or no active tenant id is available, rather than handing back a filter that silently matches nothing.

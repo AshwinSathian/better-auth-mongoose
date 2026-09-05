@@ -81,6 +81,21 @@ tenantScoped({
 
 The lower-level function `tenantScoped()` calls internally, exported directly if you want to scope a model without going through the plugin system.
 
+### `tenantMatchStage(model)` / `getScopedTenantId(model)`
+
+`aggregate()` is the one query surface `applyTenantScope` deliberately never touches on its own (see "What's not scoped, and why" below) — these two helpers are the supported way to scope your own pipelines against it instead of hand-rolling the filter (and risking a typo'd field name or a forgotten check):
+
+```ts
+import { tenantMatchStage } from "better-auth-mongoose-tenant";
+
+const byStatus = await Project.aggregate([
+  tenantMatchStage(Project), // { $match: { organizationId: <active tenant> } }
+  { $group: { _id: "$status", count: { $sum: 1 } } },
+]);
+```
+
+Both throw the same way every other enforcement path in this package does — if `model` isn't tenant-scoped, or no active tenant id is available right now — rather than handing back a filter that silently matches nothing (which would look like "no data" instead of "you forgot to scope this pipeline"). `getScopedTenantId(model)` returns just the raw id string, for a `$lookup`'s `let`, an `$expr`, or anything else `tenantMatchStage`'s ready-made stage doesn't fit.
+
 ## Why a throw, not a silent fallback
 
 If `getActiveTenantId()` returns `undefined` (no active tenant in the current context), a scoped query throws immediately, synchronously, before touching the database, rather than running unscoped (which would return every tenant's data) or returning an empty result (which would look like "no data" instead of "misconfigured request", masking real bugs). Fail loud and early beats fail silent and wide.
@@ -100,7 +115,7 @@ A few Model methods are deliberately left unscoped rather than half-solved:
 
 - **`estimatedDocumentCount()`** has no filter concept at all. It reads fast collection-level metadata, not a filtered query, so it can't be scoped by tenant. Calling it on a scoped model throws rather than silently returning every tenant's count; use `countDocuments({})` instead, which is scoped.
 - **`bulkWrite()`** takes heterogeneous, driver-shaped raw operations this package can't transform generically. Unlike the other exclusions here, this one is actively guarded, not just documented: calling it directly on a scoped model throws, the same way `estimatedDocumentCount()` does, rather than leaving a caller who's trusting the model is scoped with zero protection and zero warning. `bulkSave()` (which is scoped) still calls the true, unguarded `bulkWrite()` internally, so its own delegation isn't affected by the guard. Scope each operation's filter/document yourself if you need bulk writes directly.
-- **`aggregate()`** is pipeline-based, not filter-based. Scoping it generically would mean prepending a `$match` stage, which changes pipeline semantics in ways too specific to your own pipeline to do safely without knowing what it does.
+- **`aggregate()`** is pipeline-based, not filter-based. Scoping it generically would mean prepending a `$match` stage, which changes pipeline semantics in ways too specific to your own pipeline to do safely without knowing what it does — e.g. a pipeline that starts with `$documents`/`$unionWith` introduces rows from elsewhere a blind prepend would incorrectly filter too. Use `tenantMatchStage(Model)` to build the correct `{ $match: { <tenantField>: <activeTenantId> } }` stage yourself and place it wherever your pipeline actually needs it; it throws the same way every other enforcement path in this package does if the model isn't scoped or no active tenant id is available. `getScopedTenantId(Model)` returns just the raw id, for anything more bespoke (a `$lookup`'s `let`, an `$expr`, a raw driver command).
 - **`mapReduce()`** (Mongoose 6 and earlier only; MongoDB itself deprecated server-side map-reduce in favor of the aggregation pipeline) never constructs a `Query` at all, so exec-time enforcement structurally can't reach it.
 - **`watch()`** is a change-stream subscription, not a query.
 - **`populate()`** and **`hydrate()`** operate on already-fetched data or plain objects; neither makes its own database round trip, so there's nothing to scope.
