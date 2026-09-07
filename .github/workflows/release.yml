@@ -47,7 +47,7 @@ jobs:
         # this change; re-resolve via `git ls-remote
         # https://github.com/changesets/action.git refs/heads/v1` before
         # bumping again, since there's no version tag to diff against.
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d
+        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1
         with:
           publish: pnpm release
           version: pnpm version-packages
