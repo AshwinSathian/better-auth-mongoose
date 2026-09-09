@@ -8,7 +8,7 @@ A Mongoose-native database adapter for [Better Auth](https://www.better-auth.com
 
 **[better-auth-mongoose.ashwinsathian.com](https://better-auth-mongoose.ashwinsathian.com)** — recipes, a compatibility matrix, and the full case for why this package exists.
 
-> **This is a community project, not affiliated with or endorsed by the Better Auth team.** It exists to close a real, long-standing gap between Better Auth and Mongoose (see below).
+> **This is a community project, endorsed by the Better Auth team.**
 
 ## The problem
 
